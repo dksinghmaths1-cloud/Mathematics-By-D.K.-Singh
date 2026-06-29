@@ -72,14 +72,26 @@
                 </div>
             </div>
 
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-wider">Attendance Map Grid</h3>
+                        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mb-4">
+                    <div>
+                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-wider">Attendance Map Grid</h3>
+                        <div class="flex items-center gap-2 mt-2">
+                            <button type="button" onclick="changeMonth(-1)" class="px-2 py-1 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-md font-bold text-xs text-indigo-400 cursor-pointer">&larr;</button>
+                            <span id="calendar-month-year" class="text-xs font-mono font-black text-white min-w-[100px] text-center uppercase tracking-wide">June 2026</span>
+                            <button type="button" onclick="changeMonth(1)" class="px-2 py-1 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-md font-bold text-xs text-indigo-400 cursor-pointer">&rarr;</button>
+                        </div>
+                    </div>
                     <div class="flex items-center gap-3 text-[10px] font-bold">
                         <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-emerald-500 rounded-xs"></span> Present</span>
                         <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-red-600 rounded-xs"></span> Absent</span>
                     </div>
                 </div>
+                
+                <div id="heatmap-grid" class="grid grid-cols-7 gap-2 max-w-sm mx-auto text-center font-mono text-xs font-bold text-slate-400 bg-slate-950/60 p-4 border border-slate-800 rounded-2xl">
+                    </div>
+            </div>
+
                 <div id="heatmap-grid" class="grid grid-cols-7 gap-2 max-w-sm mx-auto text-center font-mono text-xs font-bold text-slate-400 bg-slate-950/60 p-4 border border-slate-800 rounded-2xl">
                     </div>
             </div>
@@ -260,12 +272,28 @@
                 }
             });
         }
+        
+        // 🗓️ Global Calendar State tracking variables
+        let currentCalendarDate = new Date(2026, 5, 1); // Tracks running calendar state (Default: June 2026)
+
+        function changeMonth(direction) {
+            // Adjust the operational tracking month state forward or backward dynamically
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
+            renderAttendanceHeatmap();
+        }
 
         function renderAttendanceHeatmap() {
             const container = document.getElementById("heatmap-grid");
             container.innerHTML = "";
 
-            // Print Header Day tags
+            const targetYear = currentCalendarDate.getFullYear();
+            const targetMonth = currentCalendarDate.getMonth();
+
+            // 1. Update visual Month/Year UI Title indicator string
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            document.getElementById("calendar-month-year").innerText = `${monthNames[targetMonth]} ${targetYear}`;
+
+            // 2. Print Header Week Day Labels
             const dayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
             dayLabels.forEach(d => {
                 const h = document.createElement('div');
@@ -274,39 +302,45 @@
                 container.appendChild(h);
             });
 
-            // Map standard layout grids for the current operational window month (June 2026 example template block)
-            // Reads from live arrays to check status color overlays matches
-            const totalDaysInMonth = 30; 
-            const startDayOffset = 1; // June 2026 starts on a Monday
+            // 3. Calculate dynamic month boundary rules parameters
+            const totalDaysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+            const startDayOffset = new Date(targetYear, targetMonth, 1).getDay(); // Returns 0-6 matching day index
 
-            // Insert placeholder calendar slots
+            // 4. Insert dynamic placeholder empty calendar slots for alignment
             for (let i = 0; i < startDayOffset; i++) {
                 container.appendChild(document.createElement('div'));
             }
 
+            // 5. Render dynamic status tracking blocks
             for (let day = 1; day <= totalDaysInMonth; day++) {
                 const dayBox = document.createElement('div');
+                
+                // Pad numerical fields to compile robust matching criteria comparisons
                 let padDay = day < 10 ? '0' + day : day;
-                let targetDateStr = `${padDay}/06/2026`; // Matches en-IN string syntax matching criteria
+                let padMonth = (targetMonth + 1) < 10 ? '0' + (targetMonth + 1) : (targetMonth + 1);
+                
+                // Compiles standard en-IN token comparison string parsing criteria: e.g. "14/07/2026"
+                let targetDateStr = `${padDay}/${padMonth}/${targetYear}`;
                 
                 let sessionRecord = globalAttendanceHistory.find(h => h.date === targetDateStr);
                 
-                dayBox.className = "py-1.5 rounded-md text-[10px] transition border border-slate-900 ";
+                dayBox.className = "py-1.5 rounded-md text-[10px] transition border border-slate-900/60 ";
                 dayBox.innerText = day;
 
                 if (sessionRecord) {
                     if (sessionRecord.status === "P") {
-                        dayBox.className += "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-xs shadow-emerald-500/10";
+                        dayBox.className += "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-xs shadow-emerald-500/10 font-black";
                     } else if (sessionRecord.status === "A") {
-                        dayBox.className += "bg-red-600/20 text-red-400 border-red-600/40";
+                        dayBox.className += "bg-red-600/20 text-red-400 border-red-600/40 font-black";
                     }
                 } else {
-                    dayBox.className += "bg-slate-900/40 text-slate-600";
+                    dayBox.className += "bg-slate-900/40 text-slate-600 font-normal";
                 }
                 container.appendChild(dayBox);
             }
         }
 
+        
         function renderLedgerTable() {
             const body = document.getElementById("ledger-body");
             body.innerHTML = "";
