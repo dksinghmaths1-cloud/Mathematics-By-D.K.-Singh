@@ -318,4 +318,81 @@
             const totalDaysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
             const startDayOffset = new Date(targetYear, targetMonth, 1).getDay();
 
-            for (let i = 0; i < startDayOffset; i++) { container.ap
+            for (let i = 0; i < startDayOffset; i++) { container.appendChild(document.createElement('div')); }
+
+            for (let day = 1; day <= totalDaysInMonth; day++) {
+                const dayBox = document.createElement('div');
+                let padDay = day < 10 ? '0' + day : day;
+                let padMonth = (targetMonth + 1) < 10 ? '0' + (targetMonth + 1) : (targetMonth + 1);
+                let targetDateStr = `${padDay}/${padMonth}/${targetYear}`;
+                
+                let sessionRecord = globalAttendanceHistory.find(h => h.date === targetDateStr);
+                dayBox.className = "py-1.5 rounded-md text-[10px] border border-slate-900/60 ";
+                dayBox.innerText = day;
+
+                if (sessionRecord) {
+                    if (sessionRecord.status === "P") dayBox.className += "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 font-black shadow-xs";
+                    else if (sessionRecord.status === "A") dayBox.className += "bg-red-600/20 text-red-400 border-red-600/40 font-black";
+                } else {
+                    dayBox.className += "bg-slate-900/40 text-slate-600 font-normal";
+                }
+                container.appendChild(dayBox);
+            }
+        }
+
+        function renderLedgerTable() {
+            const body = document.getElementById("ledger-body");
+            body.innerHTML = "";
+
+            if (globalExamHistory.length === 0) {
+                body.innerHTML = `<tr><td colspan="4" class="px-5 py-6 text-center text-slate-600 font-bold">No records compiled.</td></tr>`;
+                return;
+            }
+
+            globalExamHistory.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-slate-800/60 hover:bg-slate-900/10 transition";
+                let sectionBreakdownHTML = `
+                    <span class="inline-block bg-blue-950 text-blue-400 border border-blue-900/40 text-[9px] font-black px-1.5 py-0.5 rounded-sm font-mono m-0.5">A: ${row.sectionA}</span>
+                    <span class="inline-block bg-purple-950 text-purple-400 border border-purple-900/40 text-[9px] font-black px-1.5 py-0.5 rounded-sm font-mono m-0.5">B: ${row.sectionB}</span>
+                `;
+
+                tr.innerHTML = `
+                    <td class="px-5 py-4 font-black text-slate-200">${row.examName}</td>
+                    <td class="px-5 py-4">${sectionBreakdownHTML}</td>
+                    <td class="px-5 py-4 text-center font-bold text-indigo-400">
+                        <button onclick="openModalLeaderboard('${encodeURIComponent(row.examName)}')" class="hover:underline cursor-pointer">#${row.rank || "-"}</button>
+                    </td>
+                    <td class="px-5 py-4 text-right font-mono font-bold text-white">${row.totalScore}</td>
+                `;
+                body.appendChild(tr);
+            });
+        }
+
+        function openModalLeaderboard(encodedExam) {
+            const exam = decodeURIComponent(encodedExam);
+            document.getElementById('modal-exam-name').innerText = exam;
+            document.getElementById('leaderboard-rows').innerHTML = `<tr><td colspan="3" class="py-6 text-center text-slate-600 font-bold animate-pulse">Querying arrays...</td></tr>`;
+            document.getElementById('leaderboard-modal').classList.remove('hidden');
+
+            const script = document.createElement('script');
+            script.src = `${EXAM_API_URL}?action=fetchLeaderboard&examName=${encodeURIComponent(exam)}&callback=renderModalRows&ts=${new Date().getTime()}`;
+            document.body.appendChild(script);
+        }
+
+        function renderModalRows(data) {
+            const container = document.getElementById("leaderboard-rows"); container.innerHTML = "";
+            if (data.success && data.leaderboard && data.leaderboard.length > 0) {
+                data.leaderboard.forEach(row => {
+                    const tr = document.createElement('tr'); tr.className = "border-b border-slate-800/20 font-medium";
+                    let rankDisplay = row.rank === 1 ? "🥇 1" : row.rank === 2 ? "🥈 2" : row.rank === 3 ? "🥉 3" : `#${row.rank}`;
+                    tr.innerHTML = `<td class="py-2.5 font-bold text-slate-300">${rankDisplay}</td><td class="py-2.5 text-slate-400">${row.realName}</td><td class="py-2.5 text-right font-mono font-black text-indigo-400">${row.score}</td>`;
+                    container.appendChild(tr);
+                });
+            } else { container.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-600 font-bold">No data found.</td></tr>`; }
+        }
+
+        function closeLeaderboard() { document.getElementById('leaderboard-modal').classList.add('hidden'); }
+    </script>
+</body>
+</html>
