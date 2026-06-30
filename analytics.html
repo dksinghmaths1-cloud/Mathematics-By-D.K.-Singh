@@ -340,7 +340,7 @@
             }
         }
 
-        function renderLedgerTable() {
+                function renderLedgerTable() {
             const body = document.getElementById("ledger-body");
             body.innerHTML = "";
 
@@ -352,10 +352,22 @@
             globalExamHistory.forEach(row => {
                 const tr = document.createElement('tr');
                 tr.className = "border-b border-slate-800/60 hover:bg-slate-900/10 transition";
+                
+                // 🚀 DYNAMIC 5-SECTION ANALYTICS ENGINE PATCH
                 let sectionBreakdownHTML = `
                     <span class="inline-block bg-blue-950 text-blue-400 border border-blue-900/40 text-[9px] font-black px-1.5 py-0.5 rounded-sm font-mono m-0.5">A: ${row.sectionA}</span>
                     <span class="inline-block bg-purple-950 text-purple-400 border border-purple-900/40 text-[9px] font-black px-1.5 py-0.5 rounded-sm font-mono m-0.5">B: ${row.sectionB}</span>
                 `;
+
+                if (row.sectionC !== undefined && row.sectionC !== null && row.sectionC !== "") {
+                    sectionBreakdownHTML += `<span class="inline-block bg-emerald-950 text-emerald-400 border border-emerald-900/40 text-[9px] font-black px-1.5 py-0.5 rounded-sm font-mono m-0.5">C: ${row.sectionC}</span>`;
+                }
+                if (row.sectionD !== undefined && row.sectionD !== null && row.sectionD !== "") {
+                    sectionBreakdownHTML += `<span class="inline-block bg-amber-950 text-amber-400 border border-amber-900/40 text-[9px] font-black px-1.5 py-0.5 rounded-sm font-mono m-0.5">D: ${row.sectionD}</span>`;
+                }
+                if (row.sectionE !== undefined && row.sectionE !== null && row.sectionE !== "") {
+                    sectionBreakdownHTML += `<span class="inline-block bg-rose-950 text-rose-400 border border-rose-900/40 text-[9px] font-black px-1.5 py-0.5 rounded-sm font-mono m-0.5">E: ${row.sectionE}</span>`;
+                }
 
                 tr.innerHTML = `
                     <td class="px-5 py-4 font-black text-slate-200">${row.examName}</td>
@@ -368,6 +380,7 @@
                 body.appendChild(tr);
             });
         }
+
 
         function openModalLeaderboard(encodedExam) {
             const exam = decodeURIComponent(encodedExam);
