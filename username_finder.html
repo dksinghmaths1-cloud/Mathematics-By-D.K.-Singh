@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Credential Portal</title>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --background: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --success-bg: #f0fdf4;
+            --success-border: #22c55e;
+            --success-text: #166534;
+            --error-bg: #fef2f2;
+            --error-border: #ef4444;
+            --error-text: #991b1b;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--background);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .portal-card {
+            background: var(--card-bg);
+            padding: 40px 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            transition: transform 0.2s ease;
+        }
+
+        .portal-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .logo-icon {
+            width: 60px;
+            height: 60px;
+            background: #e0e7ff;
+            color: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px auto;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        h2 {
+            color: var(--text-main);
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        p {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin: 0 0 25px 0;
+            line-height: 1.5;
+        }
+
+        .input-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            background-color: #f8fafc;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background-color: #fff;
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background-color 0.2s ease;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 18px;
+            border-radius: 8px;
+            display: none;
+            text-align: left;
+            font-size: 14px;
+            line-height: 1.6;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .success {
+            background-color: var(--success-bg);
+            border: 1px solid var(--success-border);
+            color: var(--success-text);
+        }
+
+        .error {
+            background-color: var(--error-bg);
+            border: 1px solid var(--error-border);
+            color: var(--error-text);
+        }
+
+        .credential-box {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 10px;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .credential-item {
+            margin: 6px 0;
+            font-family: monospace;
+            font-size: 15px;
+        }
+        
+        .credential-item strong {
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            color: var(--text-muted);
+            display: inline-block;
+            width: 85px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="portal-card">
+    <div class="logo-icon">🔑</div>
+    <h2>Student Portal</h2>
+    <p>Retrieve your assigned classroom login credentials instantly using your registered mobile number.</p>
+    
+    <div class="input-group">
+        <label for="mobileInput">Registered Mobile Number</label>
+        <input type="text" id="mobileInput" placeholder="e.g. 9204772942" autocomplete="off">
+    </div>
+    
+    <button id="submitBtn" onclick="getStudentCredentials()">Get Credentials</button>
+
+    <div id="resultBox" class="result"></div>
+</div>
+
+<script>
+    function getStudentCredentials() {
+        var mobileInput = document.getElementById('mobileInput').value.replace(/\s+/g, ''); // Remove accidental spaces
+        var resultBox = document.getElementById('resultBox');
+        var btn = document.getElementById('submitBtn');
+        
+        // Input validation
+        if (!mobileInput) {
+            showResult("Please enter your mobile number.", "error");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = "Verifying identity...";
+        resultBox.style.display = "none";
+
+        google.script.run.withSuccessHandler(function(response) {
+            btn.disabled = false;
+            btn.innerText = "Get Credentials";
+            
+            if (response.success) {
+                var successHTML = `
+                    <strong>Welcome back, ${response.name}!</strong>
+                    <div class="credential-box">
+                        <div class="credential-item"><strong>USERNAME:</strong> ${response.username}</div>
+                        <div class="credential-item"><strong>PASSWORD:</strong> ${response.password}</div>
+                    </div>
+                `;
+                showResult(successHTML, "success");
+            } else {
+                showResult(response.message, "error");
+            }
+        }).withFailureHandler(function() {
+            btn.disabled = false;
+            btn.innerText = "Get Credentials";
+            showResult("A connection error occurred. Please try again later.", "error");
+        }).checkCredentials(mobileInput);
+    }
+
+    function showResult(htmlContent, type) {
+        var resultBox = document.getElementById('resultBox');
+        resultBox.className = "result " + type;
+        resultBox.innerHTML = htmlContent;
+        resultBox.style.display = "block";
+    }
+</script>
+
+</body>
+</html>
