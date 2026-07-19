@@ -50,7 +50,8 @@
     const API_URL = "https://script.google.com/macros/s/AKfycbzSO9BCQyaAcJUvcu3M2jJ08IKSuQFHtkdMxx2yrDJUi0PitcN72rAqAY-qTZgVKnGn_Q/exec"; 
 
     // Auto-detect GitHub pages base URL for relative PDF matching
-    const repoURL = window.location.href.split('?')[0].split('#')[0].replace('index.html', '');
+// Strips out any specific .html filename to target the base directory correctly
+const repoURL = window.location.href.split('?')[0].split('#')[0].replace(/\/[^\/]*\.html$/, '/');
 
     window.onload = function() {
       fetch(API_URL, {
