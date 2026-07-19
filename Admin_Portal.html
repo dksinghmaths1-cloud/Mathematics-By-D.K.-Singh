@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LMS Test Control Portal</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f4f6f9; padding: 50px 20px; font-family: system-ui, -apple-system, sans-serif; }
+    .portal-card { max-width: 550px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .status-box { display: none; margin-top: 20px; padding: 12px; border-radius: 6px; text-align: center; font-weight: 500; }
+    .flex-container { display: flex; gap: 10px; align-items: flex-end; }
+  </style>
+</head>
+<body>
+
+  <div class="portal-card">
+    <h3 class="text-center mb-4 text-dark fw-bold">LMS Test Control Portal</h3>
+    
+    <!-- 1. Batch Selection -->
+    <div class="mb-3">
+      <label for="batchSelect" class="form-label fw-semibold">1. Select Target Batch:</label>
+      <select id="batchSelect" class="form-select">
+        <option value="11">Batch 11</option>
+        <option value="12">Batch 12</option>
+        <option value="dr">Batch dr (Droppers)</option>
+      </select>
+    </div>
+
+    <!-- 2. Exam Title Dropdown & PDF Link -->
+    <div class="mb-4">
+      <label for="titleSelect" class="form-label fw-semibold">2. Select Exam Title to Go Live:</label>
+      <div class="flex-container">
+        <select id="titleSelect" class="form-select" onchange="handleTestSelection()" disabled>
+          <option value="">Fetching master list from columns Z/AA...</option>
+        </select>
+        <a id="pdfBtn" href="#" target="_blank" class="btn btn-outline-danger d-none">View PDF</a>
+      </div>
+    </div>
+    
+    <!-- 3. Deploy Button -->
+    <button id="submitBtn" class="btn btn-success w-100 py-2 fw-bold" onclick="deployTest()" disabled>Update LMS Config</button>
+    
+    <!-- Status Messaging -->
+    <div id="status" class="status-box"></div>
+  </div>
+
+  <script>
+    // Your live Google Web App URL
+    const API_URL = "https://script.google.com/macros/s/AKfycbzSO9BCQyaAcJUvcu3M2jJ08IKSuQFHtkdMxx2yrDJUi0PitcN72rAqAY-qTZgVKnGn_Q/exec"; 
+
+    // Auto-detect GitHub pages base URL for relative PDF matching
+    const repoURL = window.location.href.split('?')[0].split('#')[0].replace('index.html', '');
+
+    window.onload = function() {
+      fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: "getTestTitles" })
+      })
+      .then(res => res.json())
+      .then(response => {
+        if(response.status === "success") {
+          populateDropdown(response.data);
+        } else {
+          showError("Could not load titles: " + response.message);
+        }
+      })
+      .catch(err => showError("Network error tracking database. Ensure Web App is configured for 'Anyone'."));
+    };
+
+    function populateDropdown(titles) {
+      const select = document.getElementById('titleSelect');
+      select.innerHTML = '<option value="">-- Select Exam Title --</option>';
+      
+      titles.forEach(title => {
+        let opt = document.createElement('option');
+        opt.value = title;
+        opt.textContent = title;
+        select.appendChild(opt);
+      });
+      
+      select.disabled = false;
+      document.getElementById('submitBtn').disabled = false;
+    }
+
+    // Dynamic PDF detection matching file names with the title text
+    function handleTestSelection() {
+      const examTitle = document.getElementById('titleSelect').value;
+      const pdfBtn = document.getElementById('pdfBtn');
+      
+      if (examTitle) {
+        // Points directly to your GitHub hosted pdfs folder
+        pdfBtn.href = `${repoURL}pdfs/${encodeURIComponent(examTitle)}.pdf`;
+        pdfBtn.classList.remove('d-none');
+      } else {
+        pdfBtn.classList.add('d-none');
+      }
+    }
+
+    function deployTest() {
+      const batchId = document.getElementById('batchSelect').value;
+      const examTitle = document.getElementById('titleSelect').value;
+      const btn = document.getElementById('submitBtn');
+      const status = document.getElementById('status');
+
+      if (!examTitle) {
+        alert("Please pick an exam title first!");
+        return;
+      }
+      
+      btn.disabled = true;
+      btn.textContent = "Deploying updates...";
+      status.style.display = "none";
+
+      fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: "updateBatchTest", batchId: batchId, examTitle: examTitle })
+      })
+      .then(res => res.json())
+      .then(response => {
+        btn.disabled = false;
+        btn.textContent = "Update LMS Config";
+        status.style.display = "block";
+        
+        if(response.status === "success") {
+          status.className = "status-box alert alert-success";
+          status.textContent = response.message;
+        } else {
+          status.className = "status-box alert alert-danger";
+          status.textContent = "Error: " + response.message;
+        }
+      })
+      .catch(err => {
+        btn.disabled = false;
+        btn.textContent = "Update LMS Config";
+        showError("Failed to route update request.");
+      });
+    }
+
+    function showError(msg) {
+      const status = document.getElementById('status');
+      status.className = "status-box alert alert-danger";
+      status.textContent = msg;
+      status.style.display = "block";
+    }
+  </script>
+</body>
+</html>
