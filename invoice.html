@@ -283,82 +283,92 @@
                 console.error("Sheets save error:", e);
             }
         }
-
         async function handleInvoiceSubmit(event) {
-            event.preventDefault();
-            const btn = document.getElementById('downloadBtn');
-            btn.innerText = "Processing...";
-            btn.disabled = true;
+    event.preventDefault();
+    const btn = document.getElementById('downloadBtn');
+    btn.innerText = "Processing...";
+    btn.disabled = true;
 
-            try {
-                const studentName = document.getElementById('studentName').value || 'Student';
-                const studentPhone = document.getElementById('studentPhone').value;
-                const currentReceipt = parseInt(document.getElementById('receiptNo').value) || 1;
-                const dateVal = document.getElementById('dateInput').value;
-                const formattedReceipt = String(currentReceipt).padStart(3, '0');
+    try {
+        const studentName = document.getElementById('studentName').value || 'Student';
+        const studentPhone = document.getElementById('studentPhone').value;
+        const currentReceipt = parseInt(document.getElementById('receiptNo').value) || 1;
+        const dateVal = document.getElementById('dateInput').value;
+        const formattedReceipt = String(currentReceipt).padStart(3, '0');
 
-                // Compute item summary
-                let itemSummaryArr = [];
-                let totalAmt = 0;
-                items.forEach(item => {
-                    const desc = item.type === 'CUSTOM' ? item.custom : item.type;
-                    const amt = parseFloat(item.amount) || 0;
-                    totalAmt += amt;
-                    itemSummaryArr.push(`${desc} (₹${amt})`);
-                });
-                const itemsSummary = itemSummaryArr.join(', ');
+        // Compute item summary
+        let itemSummaryArr = [];
+        let totalAmt = 0;
+        items.forEach(item => {
+            const desc = item.type === 'CUSTOM' ? item.custom : item.type;
+            const amt = parseFloat(item.amount) || 0;
+            totalAmt += amt;
+            itemSummaryArr.push(`${desc} (₹${amt})`);
+        });
+        const itemsSummary = itemSummaryArr.join(', ');
 
-                // 1. Send data automatically to Google Sheets
-                const sheetData = {
-                    receiptNo: `#${formattedReceipt}`,
-                    date: dateVal,
-                    studentName: studentName,
-                    phone: `+91 ${studentPhone}`,
-                    items: itemsSummary,
-                    totalAmount: totalAmt
-                };
-                saveToGoogleSheets(sheetData);
+        // 1. Send data to Google Sheets
+        const sheetData = {
+            receiptNo: `#${formattedReceipt}`,
+            date: dateVal,
+            studentName: studentName,
+            phone: `+91 ${studentPhone}`,
+            items: itemsSummary,
+            totalAmount: totalAmt
+        };
+        saveToGoogleSheets(sheetData);
 
-                // 2. Generate PDF File
-                const element = document.getElementById('invoice');
-                const canvas = await html2canvas(element, { scale: 3 });
-                const imgData = canvas.toDataURL('image/png');
+        // 2. Generate Compressed PDF
+        const element = document.getElementById('invoice');
+        
+        // Scale 2 is plenty crisp for print/mobile viewing
+        const canvas = await html2canvas(element, { scale: 2 }); 
+        
+        // Switch to JPEG compression (0.75 quality = crystal clear text, tiny file size)
+        const imgData = canvas.toDataURL('image/jpeg', 0.75);
 
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF('p', 'mm', 'a4');
-                const imgWidth = 190;
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                
-                pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
-                pdf.save(`Invoice_${formattedReceipt}_${studentName.replace(/\s+/g, '_')}.pdf`);
+        const { jsPDF } = window.jspdf;
+        // Turn on internal PDF stream compression ({ compress: true })
+        const pdf = new jsPDF({
+            orientation: 'p',
+            unit: 'mm',
+            format: 'a4',
+            compress: true
+        });
+        
+        const imgWidth = 190;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        pdf.addImage(imgData, 'JPEG', 10, 10, imgWidth, imgHeight, undefined, 'FAST');
+        pdf.save(`Invoice_${formattedReceipt}_${studentName.replace(/\s+/g, '_')}.pdf`);
 
-                // 3. Launch WhatsApp (Direct protocol prompt so phone can pick WhatsApp Business)
-                const waMessage = encodeURIComponent(
-                    `Hello ${studentName},\n\nThank you for your payment at *MATHEMATICS BY D.K. SINGH*.\n\n*Receipt No:* #${formattedReceipt}\n*Amount Paid:* ₹${totalAmt.toLocaleString('en-IN')}\n*Payment For:* ${itemsSummary}\n\nPlease find your fee receipt PDF attached above.`
-                );
-                
-                // Using whatsapp:// protocol to trigger WhatsApp Business / App selector
-                window.location.href = `whatsapp://send?phone=91${studentPhone}&text=${waMessage}`;
+        // 3. Launch WhatsApp Business
+        const waMessage = encodeURIComponent(
+            `Hello ${studentName},\n\nThank you for your payment at *MATHEMATICS BY D.K. SINGH*.\n\n*Receipt No:* #${formattedReceipt}\n*Amount Paid:* ₹${totalAmt.toLocaleString('en-IN')}\n*Payment For:* ${itemsSummary}\n\nPlease find your fee receipt PDF attached above.`
+        );
+        window.location.href = `whatsapp://send?phone=91${studentPhone}&text=${waMessage}`;
 
-                // 4. Update Receipt Counter for Next Invoice & Reset Form
-                const nextReceipt = currentReceipt + 1;
-                localStorage.setItem('dksingh_receipt_no', nextReceipt);
-                document.getElementById('receiptNo').value = nextReceipt;
-                
-                document.getElementById('studentName').value = '';
-                document.getElementById('studentPhone').value = '';
-                items = [{ type: 'Tuition Fees', custom: '', amount: '' }];
-                renderFormItems();
+        // 4. Update Receipt Counter for Next Invoice & Reset Form
+        const nextReceipt = currentReceipt + 1;
+        localStorage.setItem('dksingh_receipt_no', nextReceipt);
+        document.getElementById('receiptNo').value = nextReceipt;
+        
+        document.getElementById('studentName').value = '';
+        document.getElementById('studentPhone').value = '';
+        items = [{ type: 'Tuition Fees', custom: '', amount: '' }];
+        renderFormItems();
 
-            } catch (err) {
-                alert("An error occurred while generating the invoice. Please try again.");
-                console.error(err);
-            } finally {
-                btn.innerText = "Download PDF & Send via WhatsApp";
-                btn.disabled = false;
-            }
-        }
+    } catch (err) {
+        alert("An error occurred while generating the invoice. Please try again.");
+        console.error(err);
+    } finally {
+        btn.innerText = "Download PDF & Send via WhatsApp";
+        btn.disabled = false;
+    }
+}
 
+
+        
         // Initialize settings and interface
         loadSavedSettings();
         renderFormItems();
