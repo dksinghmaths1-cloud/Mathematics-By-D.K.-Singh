@@ -392,76 +392,88 @@
         }
 
         async function handleInvoiceSubmit(event) {
-            event.preventDefault();
-            const btn = document.getElementById('downloadBtn');
-            btn.innerText = "Processing...";
-            btn.disabled = true;
+    event.preventDefault();
+    const btn = document.getElementById('downloadBtn');
+    btn.innerText = "Processing...";
+    btn.disabled = true;
 
-            try {
-                const studentName = document.getElementById('studentName').value || 'Student';
-                const studentPhone = document.getElementById('studentPhone').value;
-                const currentReceipt = parseInt(document.getElementById('receiptNo').value) || 1;
-                const dateVal = document.getElementById('dateInput').value;
-                const formattedReceipt = String(currentReceipt).padStart(3, '0');
+    try {
+        const studentName = document.getElementById('studentName').value || 'Student';
+        const studentPhone = document.getElementById('studentPhone').value;
+        const currentReceipt = parseInt(document.getElementById('receiptNo').value) || 1;
+        const dateVal = document.getElementById('dateInput').value;
+        const formattedReceipt = String(currentReceipt).padStart(3, '0');
 
-                let dateFormatted = '--';
-                if (dateVal) {
-                    const [year, month, day] = dateVal.split('-');
-                    dateFormatted = `${day}/${month}/${year}`;
-                }
-
-                // Compute item summary
-                let itemSummaryArr = [];
-                let itemRows = [];
-                let totalAmt = 0;
-                
-                items.forEach(item => {
-                    const desc = item.type === 'CUSTOM' ? (item.custom || 'Custom Payment') : item.type;
-                    const amt = parseFloat(item.amount) || 0;
-                    totalAmt += amt;
-                    itemSummaryArr.push(`${desc} (₹${amt})`);
-                    itemRows.push({ desc: desc, amt: amt });
-                });
-                const itemsSummary = itemSummaryArr.join(', ');
-
-                // 1. Save to Google Sheets
-                const sheetData = {
-                    receiptNo: `#${formattedReceipt}`,
-                    date: dateVal,
-                    studentName: studentName,
-                    phone: `+91 ${studentPhone}`,
-                    items: itemsSummary,
-                    totalAmount: totalAmt
-                };
-                saveToGoogleSheets(sheetData);
-
-                // 2. Generate Pure Native Vector PDF (~15 KB Size)
-                generateNativePDF(studentName, formattedReceipt, dateFormatted, studentPhone, itemRows, totalAmt);
-
-                // 3. Launch WhatsApp Business
-                const waMessage = encodeURIComponent(
-                    `Hello ${studentName},\n\nThank you for your payment at *MATHEMATICS BY D.K. SINGH*.\n\n*Receipt No:* #${formattedReceipt}\n*Amount Paid:* ₹${totalAmt.toLocaleString('en-IN')}\n*Payment For:* ${itemsSummary}\n\nPlease find your fee receipt PDF attached above.`
-                );
-                window.location.href = `whatsapp://send?phone=91${studentPhone}&text=${waMessage}`;
-
-                // 4. Update Receipt Counter for Next Invoice & Reset Form
-                const nextReceipt = currentReceipt + 1;
-                localStorage.setItem('dksingh_receipt_no', nextReceipt);
-                document.getElementById('receiptNo').value = nextReceipt;
-                
-                document.getElementById('studentName').value = '';
-                document.getElementById('studentPhone').value = '';
-                items = [{ type: 'Tuition Fees', custom: '', amount: '' }];
-                renderFormItems();
-
-            } catch (err) {
-                alert("An error occurred while generating the invoice. Please try again.");
-                console.error(err);
-            } finally {
-                btn.innerText = "Download PDF & Send via WhatsApp";
-                btn.disabled = false;
-            }
+        let dateFormatted = '--';
+        if (dateVal) {
+            const [year, month, day] = dateVal.split('-');
+            dateFormatted = `${day}/${month}/${year}`;
         }
+
+        // Compute item summary
+        let itemSummaryArr = [];
+        let itemRows = [];
+        let totalAmt = 0;
+        
+        items.forEach(item => {
+            const desc = item.type === 'CUSTOM' ? (item.custom || 'Custom Payment') : item.type;
+            const amt = parseFloat(item.amount) || 0;
+            totalAmt += amt;
+            itemSummaryArr.push(`${desc} (₹${amt})`);
+            itemRows.push({ desc: desc, amt: amt });
+        });
+        const itemsSummary = itemSummaryArr.join(', ');
+
+        // 1. Save to Google Sheets
+        const sheetData = {
+            receiptNo: `#${formattedReceipt}`,
+            date: dateVal,
+            studentName: studentName,
+            phone: `+91 ${studentPhone}`,
+            items: itemsSummary,
+            totalAmount: totalAmt
+        };
+        saveToGoogleSheets(sheetData);
+
+        // 2. Generate PDF
+        generateNativePDF(studentName, formattedReceipt, dateFormatted, studentPhone, itemRows, totalAmt);
+
+        // 3. Launch WhatsApp (detect iOS/iPad to avoid tab conflicts)
+        const waMessage = encodeURIComponent(
+            `Hello ${studentName},\n\nThank you for your payment at *MATHEMATICS BY D.K. SINGH*.\n\n*Receipt No:* #${formattedReceipt}\n*Amount Paid:* ₹${totalAmt.toLocaleString('en-IN')}\n*Payment For:* ${itemsSummary}\n\nPlease find your fee receipt PDF attached.`
+        );
+        
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        
+        setTimeout(() => {
+            if (isIOS) {
+                // Uses universal web link for iPad/iOS Safari
+                window.location.href = `https://wa.me/91${studentPhone}?text=${waMessage}`;
+            } else {
+                // Uses direct protocol for Android
+                window.location.href = `whatsapp://send?phone=91${studentPhone}&text=${waMessage}`;
+            }
+        }, 500);
+
+        // 4. Update Receipt Counter & Reset Form
+        const nextReceipt = currentReceipt + 1;
+        localStorage.setItem('dksingh_receipt_no', nextReceipt);
+        document.getElementById('receiptNo').value = nextReceipt;
+        
+        document.getElementById('studentName').value = '';
+        document.getElementById('studentPhone').value = '';
+        items = [{ type: 'Tuition Fees', custom: '', amount: '' }];
+        renderFormItems();
+
+    } catch (err) {
+        alert("An error occurred while generating the invoice. Please try again.");
+        console.error(err);
+    } finally {
+        btn.innerText = "Download PDF & Send via WhatsApp";
+        btn.disabled = false;
+    }
+}
+
 
         // Initialize settings and interface
         loadSavedSettings();
