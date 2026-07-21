@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice - MATHEMATICS BY D.K. SINGH</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2canvas and jsPDF for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        <!-- LEFT: FORM SECTION -->
+        <div class="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h2 class="text-xl font-bold text-slate-900 border-b pb-3 mb-4">Invoice Details</h2>
+
+            <form id="invoiceForm" class="space-y-4" onsubmit="handleInvoiceSubmit(event)">
+                
+                <!-- Receipt & Date -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-xs font-semibold text-slate-600">Receipt No.</label>
+                            <button type="button" onclick="resetReceiptCounter()" class="text-[10px] text-blue-600 hover:underline">Reset Counter</button>
+                        </div>
+                        <input type="number" id="receiptNo" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none" required oninput="saveManualReceiptNo()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Date</label>
+                        <input type="date" id="dateInput" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none" required onchange="updatePreview()">
+                    </div>
+                </div>
+
+                <!-- Student & WhatsApp Phone Number -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Student's Name</label>
+                    <input type="text" id="studentName" placeholder="e.g. Rahul Kumar" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none" required oninput="updatePreview()">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">WhatsApp Phone Number</label>
+                    <div class="flex gap-2">
+                        <span class="inline-flex items-center px-3 text-xs text-slate-500 bg-slate-100 border border-slate-300 rounded-lg">+91</span>
+                        <input type="tel" id="studentPhone" placeholder="10 digit mobile number" maxlength="10" pattern="[0-9]{10}" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none" required oninput="updatePreview()">
+                    </div>
+                </div>
+
+                <!-- Multiple Items Section -->
+                <div class="border-t pt-4">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Payment Items</label>
+                    
+                    <div id="itemsContainer" class="space-y-3">
+                        <!-- Dynamic items load here -->
+                    </div>
+
+                    <button type="button" onclick="addItem()" class="mt-3 text-xs font-bold text-blue-700 hover:text-blue-800 flex items-center gap-1">
+                        + Add Another Item
+                    </button>
+                </div>
+
+                <!-- Action Button -->
+                <div class="pt-4 border-t">
+                    <button type="submit" id="downloadBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                        <span>Download PDF & Send via WhatsApp</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- RIGHT: LIVE PREVIEW & PDF TEMPLATE -->
+        <div class="lg:col-span-7 flex flex-col items-center">
+            <div id="invoice" class="bg-white w-full max-w-[650px] p-8 md:p-10 rounded-2xl shadow-xl border border-slate-200">
+                
+                <!-- HEADER -->
+                <div class="flex justify-between items-start border-b-2 border-blue-900 pb-6 mb-6">
+                    <div>
+                        <h1 class="text-2xl font-black text-blue-900 tracking-tight">MATHEMATICS</h1>
+                        <p class="text-sm font-bold text-slate-700 tracking-wide">BY D.K. SINGH</p>
+                        <p class="text-xs text-slate-500 mt-1">Excellence in Mathematics Coaching</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="inline-block bg-blue-100 text-blue-900 text-xs font-bold px-3 py-1 rounded-full mb-2">FEE RECEIPT</span>
+                        <p class="text-xs text-slate-500">Contact: <span class="font-semibold text-slate-800">+91 9798929024</span></p>
+                    </div>
+                </div>
+
+                <!-- RECEIPT INFO & STUDENT DETAILS -->
+                <div class="grid grid-cols-2 gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs">
+                    <div>
+                        <p class="text-slate-500 font-medium">Student Name</p>
+                        <p id="prevStudent" class="font-bold text-slate-900 text-sm">--</p>
+                        <p class="text-slate-500 font-medium mt-2">Contact Number</p>
+                        <p id="prevPhone" class="font-semibold text-slate-800">--</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-slate-500 font-medium">Receipt No.</p>
+                        <p id="prevReceipt" class="font-bold text-blue-900 text-sm">#--</p>
+                        <p class="text-slate-500 font-medium mt-2">Date</p>
+                        <p id="prevDate" class="font-semibold text-slate-800">--</p>
+                    </div>
+                </div>
+
+                <!-- ITEMS TABLE -->
+                <table class="w-full text-xs mb-6">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-700 uppercase font-semibold border-b">
+                            <th class="py-2.5 px-3 text-left rounded-l-lg">#</th>
+                            <th class="py-2.5 px-3 text-left">Description</th>
+                            <th class="py-2.5 px-3 text-right rounded-r-lg">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="prevTableBody">
+                        <!-- Rows rendered dynamically -->
+                    </tbody>
+                </table>
+
+                <!-- TOTAL SECTION -->
+                <div class="flex justify-end mb-8">
+                    <div class="w-1/2 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                        <div class="flex justify-between items-center text-sm font-bold text-blue-950">
+                            <span>Total Amount Paid:</span>
+                            <span class="text-lg text-blue-900">₹ <span id="prevTotal">0</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FOOTER & SIGNATURE -->
+                <div class="flex justify-between items-end pt-6 border-t border-slate-200 text-[11px] text-slate-500">
+                    <div class="space-y-1">
+                        <p>• Receipt valid subject to realization.</p>
+                        <p>• Fees once paid are non-refundable.</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="h-10 border-b border-slate-400 w-32 mb-1"></div>
+                        <p class="font-bold text-slate-800">Authorized Signature</p>
+                        <p class="text-[10px] text-slate-500">Mathematics by D.K. Singh</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Google Web App Endpoint
+        const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycby8A-gW1RwR7F0Qtqfe4X5Z6F52Te8F66niw_OLcpi0GsiyuBgXdaB0MuayCizmjT5a/exec";
+
+        let items = [
+            { type: 'Tuition Fees', custom: '', amount: '' }
+        ];
+
+        // Initialize setup
+        document.getElementById('dateInput').valueAsDate = new Date();
+
+        function loadSavedSettings() {
+            let currentReceipt = localStorage.getItem('dksingh_receipt_no') || 1;
+            document.getElementById('receiptNo').value = currentReceipt;
+            updatePreview();
+        }
+
+        function saveManualReceiptNo() {
+            const val = parseInt(document.getElementById('receiptNo').value) || 1;
+            localStorage.setItem('dksingh_receipt_no', val);
+            updatePreview();
+        }
+
+        function resetReceiptCounter() {
+            const newNo = prompt("Enter new starting receipt number:", "1");
+            if (newNo !== null && !isNaN(newNo) && newNo.trim() !== '') {
+                localStorage.setItem('dksingh_receipt_no', parseInt(newNo));
+                loadSavedSettings();
+            }
+        }
+
+        function renderFormItems() {
+            const container = document.getElementById('itemsContainer');
+            container.innerHTML = '';
+
+            items.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2';
+                itemDiv.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <select onchange="updateItemType(${index}, this.value)" class="flex-1 px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white">
+                            <option value="Tuition Fees" ${item.type === 'Tuition Fees' ? 'selected' : ''}>Tuition Fees</option>
+                            <option value="CUSTOM" ${item.type === 'CUSTOM' ? 'selected' : ''}>Write Manually...</option>
+                        </select>
+                        <input type="number" value="${item.amount}" placeholder="Amount ₹" oninput="updateItemAmount(${index}, this.value)" class="w-24 px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white" required>
+                        ${items.length > 1 ? `<button type="button" onclick="removeItem(${index})" class="text-red-500 font-bold px-1 text-sm hover:text-red-700">✕</button>` : ''}
+                    </div>
+                    ${item.type === 'CUSTOM' ? `
+                        <input type="text" value="${item.custom}" placeholder="e.g. Test Series Fee / Study Material" oninput="updateItemCustom(${index}, this.value)" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white" required>
+                    ` : ''}
+                `;
+                container.appendChild(itemDiv);
+            });
+            updatePreview();
+        }
+
+        function addItem() {
+            items.push({ type: 'Tuition Fees', custom: '', amount: '' });
+            renderFormItems();
+        }
+
+        function removeItem(index) {
+            items.splice(index, 1);
+            renderFormItems();
+        }
+
+        function updateItemType(index, value) {
+            items[index].type = value;
+            renderFormItems();
+        }
+
+        function updateItemAmount(index, value) {
+            items[index].amount = value;
+            updatePreview();
+        }
+
+        function updateItemCustom(index, value) {
+            items[index].custom = value;
+            updatePreview();
+        }
+
+        function updatePreview() {
+            const student = document.getElementById('studentName').value || '--';
+            const phone = document.getElementById('studentPhone').value || '--';
+            const receipt = document.getElementById('receiptNo').value || '1';
+            const dateVal = document.getElementById('dateInput').value;
+
+            document.getElementById('prevStudent').innerText = student;
+            document.getElementById('prevPhone').innerText = phone !== '--' ? '+91 ' + phone : '--';
+            
+            const formattedReceipt = String(receipt).padStart(3, '0');
+            document.getElementById('prevReceipt').innerText = '#' + formattedReceipt;
+
+            if (dateVal) {
+                const [year, month, day] = dateVal.split('-');
+                document.getElementById('prevDate').innerText = `${day}/${month}/${year}`;
+            }
+
+            // Render Preview Table
+            const tableBody = document.getElementById('prevTableBody');
+            tableBody.innerHTML = '';
+            let total = 0;
+
+            items.forEach((item, i) => {
+                const title = item.type === 'CUSTOM' ? (item.custom || 'Custom Payment') : item.type;
+                const amt = parseFloat(item.amount) || 0;
+                total += amt;
+
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-slate-100';
+                tr.innerHTML = `
+                    <td class="py-2 px-3 text-slate-400 font-medium">${i + 1}</td>
+                    <td class="py-2 px-3 text-slate-800 font-semibold">${title}</td>
+                    <td class="py-2 px-3 text-right text-slate-900 font-medium">₹ ${amt.toLocaleString('en-IN')}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            document.getElementById('prevTotal').innerText = total.toLocaleString('en-IN');
+        }
+
+        async function saveToGoogleSheets(invoiceData) {
+            try {
+                await fetch(GOOGLE_SHEET_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(invoiceData)
+                });
+            } catch (e) {
+                console.error("Sheets save error:", e);
+            }
+        }
+
+        async function handleInvoiceSubmit(event) {
+            event.preventDefault();
+            const btn = document.getElementById('downloadBtn');
+            btn.innerText = "Processing...";
+            btn.disabled = true;
+
+            try {
+                const studentName = document.getElementById('studentName').value || 'Student';
+                const studentPhone = document.getElementById('studentPhone').value;
+                const currentReceipt = parseInt(document.getElementById('receiptNo').value) || 1;
+                const dateVal = document.getElementById('dateInput').value;
+                const formattedReceipt = String(currentReceipt).padStart(3, '0');
+
+                // Compute item summary
+                let itemSummaryArr = [];
+                let totalAmt = 0;
+                items.forEach(item => {
+                    const desc = item.type === 'CUSTOM' ? item.custom : item.type;
+                    const amt = parseFloat(item.amount) || 0;
+                    totalAmt += amt;
+                    itemSummaryArr.push(`${desc} (₹${amt})`);
+                });
+                const itemsSummary = itemSummaryArr.join(', ');
+
+                // 1. Send data automatically to Google Sheets
+                const sheetData = {
+                    receiptNo: `#${formattedReceipt}`,
+                    date: dateVal,
+                    studentName: studentName,
+                    phone: `+91 ${studentPhone}`,
+                    items: itemsSummary,
+                    totalAmount: totalAmt
+                };
+                saveToGoogleSheets(sheetData);
+
+                // 2. Generate PDF File
+                const element = document.getElementById('invoice');
+                const canvas = await html2canvas(element, { scale: 3 });
+                const imgData = canvas.toDataURL('image/png');
+
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const imgWidth = 190;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+                pdf.save(`Invoice_${formattedReceipt}_${studentName.replace(/\s+/g, '_')}.pdf`);
+
+                // 3. Launch WhatsApp (Direct protocol prompt so phone can pick WhatsApp Business)
+                const waMessage = encodeURIComponent(
+                    `Hello ${studentName},\n\nThank you for your payment at *MATHEMATICS BY D.K. SINGH*.\n\n*Receipt No:* #${formattedReceipt}\n*Amount Paid:* ₹${totalAmt.toLocaleString('en-IN')}\n*Payment For:* ${itemsSummary}\n\nPlease find your fee receipt PDF attached above.`
+                );
+                
+                // Using whatsapp:// protocol to trigger WhatsApp Business / App selector
+                window.location.href = `whatsapp://send?phone=91${studentPhone}&text=${waMessage}`;
+
+                // 4. Update Receipt Counter for Next Invoice & Reset Form
+                const nextReceipt = currentReceipt + 1;
+                localStorage.setItem('dksingh_receipt_no', nextReceipt);
+                document.getElementById('receiptNo').value = nextReceipt;
+                
+                document.getElementById('studentName').value = '';
+                document.getElementById('studentPhone').value = '';
+                items = [{ type: 'Tuition Fees', custom: '', amount: '' }];
+                renderFormItems();
+
+            } catch (err) {
+                alert("An error occurred while generating the invoice. Please try again.");
+                console.error(err);
+            } finally {
+                btn.innerText = "Download PDF & Send via WhatsApp";
+                btn.disabled = false;
+            }
+        }
+
+        // Initialize settings and interface
+        loadSavedSettings();
+        renderFormItems();
+    </script>
+</body>
+</html>
