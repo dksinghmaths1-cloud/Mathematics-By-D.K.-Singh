@@ -6,7 +6,7 @@
     <title>Invoice - MATHEMATICS BY D.K. SINGH</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Native jsPDF library (No heavy image canvas needed) -->
+    <!-- Native jsPDF library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -299,13 +299,13 @@
             doc.text("Excellence in Mathematics Coaching", 15, 26);
             doc.text("Contact: +91 9798929024", 15, 31);
 
-            // Fee Receipt Tag
+            // Receipt Tag
             doc.setFillColor(239, 246, 255);
-            doc.roundedRect(145, 14, 50, 8, 2, 2, 'F');
+            doc.roundedRect(150, 14, 45, 8, 2, 2, 'F');
             doc.setTextColor(30, 58, 138);
             doc.setFont('Helvetica', 'bold');
             doc.setFontSize(9);
-            doc.text("FEE RECEIPT", 170, 19.5, { align: 'center' });
+            doc.text("RECEIPT", 172.5, 19.5, { align: 'center' });
 
             // Divider Line
             doc.setDrawColor(30, 58, 138);
@@ -388,7 +388,7 @@
             doc.text("Mathematics by D.K. Singh", 167.5, y + 9, { align: 'center' });
 
             // Save PDF
-            pdf.save(`Invoice_${formattedReceipt}_${studentName.replace(/\s+/g, '_')}.pdf`);
+            doc.save(`Invoice_${formattedReceipt}_${studentName.replace(/\s+/g, '_')}.pdf`);
         }
 
         async function handleInvoiceSubmit(event) {
