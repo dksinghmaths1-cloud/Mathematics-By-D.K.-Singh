@@ -6,8 +6,7 @@
     <title>Invoice - MATHEMATICS BY D.K. SINGH</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- html2canvas and jsPDF for PDF generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Native jsPDF library (No heavy image canvas needed) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -75,7 +74,7 @@
             </form>
         </div>
 
-        <!-- RIGHT: LIVE PREVIEW & PDF TEMPLATE -->
+        <!-- RIGHT: LIVE PREVIEW SECTION -->
         <div class="lg:col-span-7 flex flex-col items-center">
             <div id="invoice" class="bg-white w-full max-w-[650px] p-8 md:p-10 rounded-2xl shadow-xl border border-slate-200">
                 
@@ -87,7 +86,7 @@
                         <p class="text-xs text-slate-500 mt-1">Excellence in Mathematics Coaching</p>
                     </div>
                     <div class="text-right">
-                        <span class="inline-block bg-blue-100 text-blue-900 text-xs font-bold px-3 py-1 rounded-full mb-2">FEE RECEIPT</span>
+                        <span class="inline-block bg-blue-100 text-blue-900 text-xs font-bold px-3 py-1 rounded-full mb-2">RECEIPT</span>
                         <p class="text-xs text-slate-500">Contact: <span class="font-semibold text-slate-800">+91 9798929024</span></p>
                     </div>
                 </div>
@@ -283,92 +282,187 @@
                 console.error("Sheets save error:", e);
             }
         }
+
+        function generateNativePDF(studentName, formattedReceipt, dateFormatted, studentPhone, itemRows, totalAmt) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
+
+            // Header Background & Title
+            doc.setTextColor(30, 58, 138); // Blue-900
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(20);
+            doc.text("MATHEMATICS BY D.K. SINGH", 15, 20);
+
+            doc.setFontSize(9);
+            doc.setFont('Helvetica', 'normal');
+            doc.setTextColor(100, 116, 139);
+            doc.text("Excellence in Mathematics Coaching", 15, 26);
+            doc.text("Contact: +91 9798929024", 15, 31);
+
+            // Fee Receipt Tag
+            doc.setFillColor(239, 246, 255);
+            doc.roundedRect(145, 14, 50, 8, 2, 2, 'F');
+            doc.setTextColor(30, 58, 138);
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.text("FEE RECEIPT", 170, 19.5, { align: 'center' });
+
+            // Divider Line
+            doc.setDrawColor(30, 58, 138);
+            doc.setLineWidth(0.8);
+            doc.line(15, 36, 195, 36);
+
+            // Metadata Box
+            doc.setFillColor(248, 250, 252);
+            doc.roundedRect(15, 42, 180, 22, 2, 2, 'F');
+
+            doc.setFontSize(8);
+            doc.setFont('Helvetica', 'bold');
+            doc.setTextColor(100, 116, 139);
+            doc.text("STUDENT NAME:", 20, 50);
+            doc.text("CONTACT NO:", 20, 58);
+            
+            doc.text("RECEIPT NO:", 120, 50);
+            doc.text("DATE:", 120, 58);
+
+            doc.setFont('Helvetica', 'normal');
+            doc.setTextColor(15, 23, 42);
+            doc.text(studentName, 50, 50);
+            doc.text("+91 " + studentPhone, 50, 58);
+            doc.text("#" + formattedReceipt, 145, 50);
+            doc.text(dateFormatted, 145, 58);
+
+            // Table Headers
+            let y = 74;
+            doc.setFillColor(241, 245, 249);
+            doc.rect(15, y, 180, 8, 'F');
+            
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.setTextColor(51, 65, 85);
+            doc.text("#", 20, y + 5.5);
+            doc.text("DESCRIPTION", 35, y + 5.5);
+            doc.text("AMOUNT (INR)", 185, y + 5.5, { align: 'right' });
+
+            // Table Rows
+            y += 12;
+            doc.setFont('Helvetica', 'normal');
+            doc.setTextColor(15, 23, 42);
+
+            itemRows.forEach((row, idx) => {
+                doc.text(String(idx + 1), 20, y);
+                doc.text(row.desc, 35, y);
+                doc.text("INR " + row.amt.toLocaleString('en-IN'), 185, y, { align: 'right' });
+                
+                doc.setDrawColor(241, 245, 249);
+                doc.setLineWidth(0.3);
+                doc.line(15, y + 3, 195, y + 3);
+                y += 10;
+            });
+
+            // Total Amount Box
+            y += 4;
+            doc.setFillColor(239, 246, 255);
+            doc.roundedRect(110, y, 85, 12, 2, 2, 'F');
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.setTextColor(30, 58, 138);
+            doc.text("Total Amount Paid:", 115, y + 8);
+            doc.text("INR " + totalAmt.toLocaleString('en-IN'), 190, y + 8, { align: 'right' });
+
+            // Terms & Signature
+            y += 35;
+            doc.setFontSize(8);
+            doc.setFont('Helvetica', 'normal');
+            doc.setTextColor(148, 163, 184);
+            doc.text("* Receipt valid subject to realization.", 15, y);
+            doc.text("* Fees once paid are non-refundable.", 15, y + 5);
+
+            doc.setDrawColor(148, 163, 184);
+            doc.line(145, y, 190, y);
+            doc.setFont('Helvetica', 'bold');
+            doc.setTextColor(51, 65, 85);
+            doc.text("Authorized Signature", 167.5, y + 5, { align: 'center' });
+            doc.setFontSize(7);
+            doc.setFont('Helvetica', 'normal');
+            doc.text("Mathematics by D.K. Singh", 167.5, y + 9, { align: 'center' });
+
+            // Save PDF
+            pdf.save(`Invoice_${formattedReceipt}_${studentName.replace(/\s+/g, '_')}.pdf`);
+        }
+
         async function handleInvoiceSubmit(event) {
-    event.preventDefault();
-    const btn = document.getElementById('downloadBtn');
-    btn.innerText = "Processing...";
-    btn.disabled = true;
+            event.preventDefault();
+            const btn = document.getElementById('downloadBtn');
+            btn.innerText = "Processing...";
+            btn.disabled = true;
 
-    try {
-        const studentName = document.getElementById('studentName').value || 'Student';
-        const studentPhone = document.getElementById('studentPhone').value;
-        const currentReceipt = parseInt(document.getElementById('receiptNo').value) || 1;
-        const dateVal = document.getElementById('dateInput').value;
-        const formattedReceipt = String(currentReceipt).padStart(3, '0');
+            try {
+                const studentName = document.getElementById('studentName').value || 'Student';
+                const studentPhone = document.getElementById('studentPhone').value;
+                const currentReceipt = parseInt(document.getElementById('receiptNo').value) || 1;
+                const dateVal = document.getElementById('dateInput').value;
+                const formattedReceipt = String(currentReceipt).padStart(3, '0');
 
-        // Compute item summary
-        let itemSummaryArr = [];
-        let totalAmt = 0;
-        items.forEach(item => {
-            const desc = item.type === 'CUSTOM' ? item.custom : item.type;
-            const amt = parseFloat(item.amount) || 0;
-            totalAmt += amt;
-            itemSummaryArr.push(`${desc} (₹${amt})`);
-        });
-        const itemsSummary = itemSummaryArr.join(', ');
+                let dateFormatted = '--';
+                if (dateVal) {
+                    const [year, month, day] = dateVal.split('-');
+                    dateFormatted = `${day}/${month}/${year}`;
+                }
 
-        // 1. Send data to Google Sheets
-        const sheetData = {
-            receiptNo: `#${formattedReceipt}`,
-            date: dateVal,
-            studentName: studentName,
-            phone: `+91 ${studentPhone}`,
-            items: itemsSummary,
-            totalAmount: totalAmt
-        };
-        saveToGoogleSheets(sheetData);
+                // Compute item summary
+                let itemSummaryArr = [];
+                let itemRows = [];
+                let totalAmt = 0;
+                
+                items.forEach(item => {
+                    const desc = item.type === 'CUSTOM' ? (item.custom || 'Custom Payment') : item.type;
+                    const amt = parseFloat(item.amount) || 0;
+                    totalAmt += amt;
+                    itemSummaryArr.push(`${desc} (₹${amt})`);
+                    itemRows.push({ desc: desc, amt: amt });
+                });
+                const itemsSummary = itemSummaryArr.join(', ');
 
-        // 2. Generate Compressed PDF
-        const element = document.getElementById('invoice');
-        
-        // Scale 2 is plenty crisp for print/mobile viewing
-        const canvas = await html2canvas(element, { scale: 2 }); 
-        
-        // Switch to JPEG compression (0.75 quality = crystal clear text, tiny file size)
-        const imgData = canvas.toDataURL('image/jpeg', 0.75);
+                // 1. Save to Google Sheets
+                const sheetData = {
+                    receiptNo: `#${formattedReceipt}`,
+                    date: dateVal,
+                    studentName: studentName,
+                    phone: `+91 ${studentPhone}`,
+                    items: itemsSummary,
+                    totalAmount: totalAmt
+                };
+                saveToGoogleSheets(sheetData);
 
-        const { jsPDF } = window.jspdf;
-        // Turn on internal PDF stream compression ({ compress: true })
-        const pdf = new jsPDF({
-            orientation: 'p',
-            unit: 'mm',
-            format: 'a4',
-            compress: true
-        });
-        
-        const imgWidth = 190;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        
-        pdf.addImage(imgData, 'JPEG', 10, 10, imgWidth, imgHeight, undefined, 'FAST');
-        pdf.save(`Invoice_${formattedReceipt}_${studentName.replace(/\s+/g, '_')}.pdf`);
+                // 2. Generate Pure Native Vector PDF (~15 KB Size)
+                generateNativePDF(studentName, formattedReceipt, dateFormatted, studentPhone, itemRows, totalAmt);
 
-        // 3. Launch WhatsApp Business
-        const waMessage = encodeURIComponent(
-            `Hello ${studentName},\n\nThank you for your payment at *MATHEMATICS BY D.K. SINGH*.\n\n*Receipt No:* #${formattedReceipt}\n*Amount Paid:* ₹${totalAmt.toLocaleString('en-IN')}\n*Payment For:* ${itemsSummary}\n\nPlease find your fee receipt PDF attached above.`
-        );
-        window.location.href = `whatsapp://send?phone=91${studentPhone}&text=${waMessage}`;
+                // 3. Launch WhatsApp Business
+                const waMessage = encodeURIComponent(
+                    `Hello ${studentName},\n\nThank you for your payment at *MATHEMATICS BY D.K. SINGH*.\n\n*Receipt No:* #${formattedReceipt}\n*Amount Paid:* ₹${totalAmt.toLocaleString('en-IN')}\n*Payment For:* ${itemsSummary}\n\nPlease find your fee receipt PDF attached above.`
+                );
+                window.location.href = `whatsapp://send?phone=91${studentPhone}&text=${waMessage}`;
 
-        // 4. Update Receipt Counter for Next Invoice & Reset Form
-        const nextReceipt = currentReceipt + 1;
-        localStorage.setItem('dksingh_receipt_no', nextReceipt);
-        document.getElementById('receiptNo').value = nextReceipt;
-        
-        document.getElementById('studentName').value = '';
-        document.getElementById('studentPhone').value = '';
-        items = [{ type: 'Tuition Fees', custom: '', amount: '' }];
-        renderFormItems();
+                // 4. Update Receipt Counter for Next Invoice & Reset Form
+                const nextReceipt = currentReceipt + 1;
+                localStorage.setItem('dksingh_receipt_no', nextReceipt);
+                document.getElementById('receiptNo').value = nextReceipt;
+                
+                document.getElementById('studentName').value = '';
+                document.getElementById('studentPhone').value = '';
+                items = [{ type: 'Tuition Fees', custom: '', amount: '' }];
+                renderFormItems();
 
-    } catch (err) {
-        alert("An error occurred while generating the invoice. Please try again.");
-        console.error(err);
-    } finally {
-        btn.innerText = "Download PDF & Send via WhatsApp";
-        btn.disabled = false;
-    }
-}
+            } catch (err) {
+                alert("An error occurred while generating the invoice. Please try again.");
+                console.error(err);
+            } finally {
+                btn.innerText = "Download PDF & Send via WhatsApp";
+                btn.disabled = false;
+            }
+        }
 
-
-        
         // Initialize settings and interface
         loadSavedSettings();
         renderFormItems();
