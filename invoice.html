@@ -438,24 +438,29 @@
         // 2. Generate PDF
         generateNativePDF(studentName, formattedReceipt, dateFormatted, studentPhone, itemRows, totalAmt);
 
-        // 3. Launch WhatsApp (detect iOS/iPad to avoid tab conflicts)
+        // Prepare pre-typed WhatsApp message
         const waMessage = encodeURIComponent(
-            `Hello ${studentName},\n\nThank you for your payment at *MATHEMATICS BY D.K. SINGH*.\n\n*Receipt No:* #${formattedReceipt}\n*Amount Paid:* ₹${totalAmt.toLocaleString('en-IN')}\n*Payment For:* ${itemsSummary}\n\nPlease find your fee receipt PDF attached.`
+            `Hello ${studentName},\n\nThank you for your payment at *MATHEMATICS BY D.K. SINGH*.\n\n*Receipt No:* #${formattedReceipt}\n*Amount Paid:* ₹${totalAmt.toLocaleString('en-IN')}\n*Payment For:* ${itemsSummary}\n\nPlease find your fee receipt PDF attached above.`
         );
-        
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        
-        setTimeout(() => {
-            if (isIOS) {
-                // Uses universal web link for iPad/iOS Safari
-                window.location.href = `https://wa.me/91${studentPhone}?text=${waMessage}`;
-            } else {
-                // Uses direct protocol for Android
-                window.location.href = `whatsapp://send?phone=91${studentPhone}&text=${waMessage}`;
-            }
-        }, 500);
 
-        // 4. Update Receipt Counter & Reset Form
+        // Detect iOS / iPadOS
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        if (isIOS) {
+            // iOS Flow: Open WhatsApp link explicitly so text never gets lost
+            const waUrl = `https://wa.me/91${studentPhone}?text=${waMessage}`;
+            
+            // Short delay to allow iPad to finish saving PDF to Files app
+            setTimeout(() => {
+                window.location.href = waUrl;
+            }, 800);
+        } else {
+            // Android Flow: Direct protocol launch
+            window.location.href = `whatsapp://send?phone=91${studentPhone}&text=${waMessage}`;
+        }
+
+        // 3. Update Receipt Counter & Reset Form
         const nextReceipt = currentReceipt + 1;
         localStorage.setItem('dksingh_receipt_no', nextReceipt);
         document.getElementById('receiptNo').value = nextReceipt;
@@ -473,6 +478,7 @@
         btn.disabled = false;
     }
 }
+
 
 
         // Initialize settings and interface
