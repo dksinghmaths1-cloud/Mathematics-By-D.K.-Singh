@@ -52,13 +52,13 @@
                     </div>
                 </div>
 
-                <!-- Dues & Fee Tracking Section -->
+                <!-- Course Fee & Dues Tracking -->
                 <div class="p-3 bg-blue-50/50 rounded-xl border border-blue-100 space-y-3">
-                    <label class="block text-xs font-bold uppercase tracking-wider text-blue-900">Fee Agreement & Payment History</label>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-blue-900">Tuition Fee Agreement (Optional)</label>
                     
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Total Agreed Fees (₹)</label>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Total Course Fee (₹)</label>
                             <input type="number" id="totalAgreedFees" placeholder="e.g. 10000" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white" oninput="updatePreview()">
                         </div>
                         <div>
@@ -70,7 +70,7 @@
 
                 <!-- Payment Items Section -->
                 <div class="border-t pt-4">
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Current Payment Items</label>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Payment Items</label>
                     
                     <div id="itemsContainer" class="space-y-3">
                         <!-- Dynamic items load here -->
@@ -140,20 +140,20 @@
                 <!-- TOTAL & DUES BREAKDOWN SECTION -->
                 <div class="flex justify-end mb-8">
                     <div class="w-full sm:w-2/3 bg-blue-50/40 p-4 rounded-xl border border-blue-100 space-y-1.5 text-xs">
-                        <div class="flex justify-between text-slate-600">
-                            <span>Total Agreed Fees:</span>
+                        <div id="agreedRow" class="flex justify-between text-slate-600">
+                            <span>Total Agreed Tuition Fee:</span>
                             <span class="font-semibold text-slate-800">₹ <span id="prevTotalAgreed">0</span></span>
                         </div>
-                        <div class="flex justify-between text-slate-600">
-                            <span>Paid Previously:</span>
+                        <div id="prevPaidRow" class="flex justify-between text-slate-600">
+                            <span>Tuition Paid Previously:</span>
                             <span class="font-semibold text-slate-800">₹ <span id="prevPaidPrev">0</span></span>
                         </div>
                         <div class="flex justify-between text-blue-900 font-bold border-t border-blue-200 pt-1.5 text-sm">
-                            <span>Amount Paid Today:</span>
+                            <span>Total Amount Paid Today:</span>
                             <span>₹ <span id="prevTotalToday">0</span></span>
                         </div>
-                        <div class="flex justify-between text-red-600 font-bold border-t border-dashed border-red-200 pt-1.5 text-sm">
-                            <span>Remaining Balance Due:</span>
+                        <div id="duesRow" class="flex justify-between text-red-600 font-bold border-t border-dashed border-red-200 pt-1.5 text-sm">
+                            <span>Remaining Tuition Dues:</span>
                             <span>₹ <span id="prevBalanceDue">0</span></span>
                         </div>
                     </div>
@@ -217,13 +217,14 @@
                     <div class="flex items-center gap-2">
                         <select onchange="updateItemType(${index}, this.value)" class="flex-1 px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white">
                             <option value="Tuition Fees" ${item.type === 'Tuition Fees' ? 'selected' : ''}>Tuition Fees</option>
+                            <option value="Book / Study Material" ${item.type === 'Book / Study Material' ? 'selected' : ''}>Book / Study Material</option>
                             <option value="CUSTOM" ${item.type === 'CUSTOM' ? 'selected' : ''}>Write Manually...</option>
                         </select>
                         <input type="number" value="${item.amount}" placeholder="Amount ₹" oninput="updateItemAmount(${index}, this.value)" class="w-24 px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white" required>
                         ${items.length > 1 ? `<button type="button" onclick="removeItem(${index})" class="text-red-500 font-bold px-1 text-sm hover:text-red-700">✕</button>` : ''}
                     </div>
                     ${item.type === 'CUSTOM' ? `
-                        <input type="text" value="${item.custom}" placeholder="e.g. Test Series Fee / Study Material" oninput="updateItemCustom(${index}, this.value)" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white" required>
+                        <input type="text" value="${item.custom}" placeholder="e.g. Test Series / Registration" oninput="updateItemCustom(${index}, this.value)" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white" required>
                     ` : ''}
                 `;
                 container.appendChild(itemDiv);
@@ -276,15 +277,22 @@
                 document.getElementById('prevDate').innerText = `${day}/${month}/${year}`;
             }
 
-            // Render Table & Calculate Total Today
+            // Render Table & Calculate Separation
             const tableBody = document.getElementById('prevTableBody');
             tableBody.innerHTML = '';
-            let paidToday = 0;
+            
+            let paidTodayTotal = 0;
+            let tuitionPaidToday = 0;
 
             items.forEach((item, i) => {
                 const title = item.type === 'CUSTOM' ? (item.custom || 'Custom Payment') : item.type;
                 const amt = parseFloat(item.amount) || 0;
-                paidToday += amt;
+                paidTodayTotal += amt;
+
+                // ONLY deduct from tuition balance if it's explicitly marked as Tuition Fees
+                if (item.type === 'Tuition Fees') {
+                    tuitionPaidToday += amt;
+                }
 
                 const tr = document.createElement('tr');
                 tr.className = 'border-b border-slate-100';
@@ -296,13 +304,24 @@
                 tableBody.appendChild(tr);
             });
 
-            // Calculate Remaining Balance
-            const balanceDue = Math.max(0, totalAgreed - (paidPrev + paidToday));
+            // Calculate Remaining Balance for Tuition
+            const balanceDue = Math.max(0, totalAgreed - (paidPrev + tuitionPaidToday));
 
             document.getElementById('prevTotalAgreed').innerText = totalAgreed.toLocaleString('en-IN');
             document.getElementById('prevPaidPrev').innerText = paidPrev.toLocaleString('en-IN');
-            document.getElementById('prevTotalToday').innerText = paidToday.toLocaleString('en-IN');
+            document.getElementById('prevTotalToday').innerText = paidTodayTotal.toLocaleString('en-IN');
             document.getElementById('prevBalanceDue').innerText = balanceDue.toLocaleString('en-IN');
+
+            // Hide/Show Dues Rows if totalAgreed is 0
+            if (totalAgreed === 0) {
+                document.getElementById('agreedRow').style.display = 'none';
+                document.getElementById('prevPaidRow').style.display = 'none';
+                document.getElementById('duesRow').style.display = 'none';
+            } else {
+                document.getElementById('agreedRow').style.display = 'flex';
+                document.getElementById('prevPaidRow').style.display = 'flex';
+                document.getElementById('duesRow').style.display = 'flex';
+            }
         }
 
         async function saveToGoogleSheets(invoiceData) {
@@ -319,7 +338,7 @@
             }
         }
 
-        function generateNativePDF(studentName, formattedReceipt, dateFormatted, studentPhone, itemRows, totalAgreed, paidPrev, paidToday, balanceDue) {
+        function generateNativePDF(studentName, formattedReceipt, dateFormatted, studentPhone, itemRows, totalAgreed, paidPrev, paidTodayTotal, balanceDue) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
 
@@ -397,30 +416,40 @@
 
             // Fee Summary Box
             y += 4;
-            doc.setFillColor(239, 246, 255);
-            doc.roundedRect(110, y, 85, 28, 2, 2, 'F');
+            if (totalAgreed > 0) {
+                doc.setFillColor(239, 246, 255);
+                doc.roundedRect(110, y, 85, 28, 2, 2, 'F');
 
-            doc.setFontSize(8);
-            doc.setFont('Helvetica', 'normal');
-            doc.setTextColor(71, 85, 105);
-            
-            doc.text("Total Agreed Fees:", 115, y + 6);
-            doc.text("INR " + totalAgreed.toLocaleString('en-IN'), 190, y + 6, { align: 'right' });
+                doc.setFontSize(8);
+                doc.setFont('Helvetica', 'normal');
+                doc.setTextColor(71, 85, 105);
+                
+                doc.text("Total Agreed Fee:", 115, y + 6);
+                doc.text("INR " + totalAgreed.toLocaleString('en-IN'), 190, y + 6, { align: 'right' });
 
-            doc.text("Paid Previously:", 115, y + 11);
-            doc.text("INR " + paidPrev.toLocaleString('en-IN'), 190, y + 11, { align: 'right' });
+                doc.text("Paid Previously:", 115, y + 11);
+                doc.text("INR " + paidPrev.toLocaleString('en-IN'), 190, y + 11, { align: 'right' });
 
-            doc.setFont('Helvetica', 'bold');
-            doc.setTextColor(30, 58, 138);
-            doc.text("Amount Paid Today:", 115, y + 17);
-            doc.text("INR " + paidToday.toLocaleString('en-IN'), 190, y + 17, { align: 'right' });
+                doc.setFont('Helvetica', 'bold');
+                doc.setTextColor(30, 58, 138);
+                doc.text("Total Paid Today:", 115, y + 17);
+                doc.text("INR " + paidTodayTotal.toLocaleString('en-IN'), 190, y + 17, { align: 'right' });
 
-            doc.setTextColor(220, 38, 38); // Red
-            doc.text("Remaining Balance Due:", 115, y + 23);
-            doc.text("INR " + balanceDue.toLocaleString('en-IN'), 190, y + 23, { align: 'right' });
+                doc.setTextColor(220, 38, 38);
+                doc.text("Remaining Tuition Dues:", 115, y + 23);
+                doc.text("INR " + balanceDue.toLocaleString('en-IN'), 190, y + 23, { align: 'right' });
+            } else {
+                doc.setFillColor(239, 246, 255);
+                doc.roundedRect(110, y, 85, 12, 2, 2, 'F');
+                doc.setFont('Helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.setTextColor(30, 58, 138);
+                doc.text("Total Paid Today:", 115, y + 8);
+                doc.text("INR " + paidTodayTotal.toLocaleString('en-IN'), 190, y + 8, { align: 'right' });
+            }
 
             // Terms & Signature
-            y += 45;
+            y += 40;
             doc.setFontSize(8);
             doc.setFont('Helvetica', 'normal');
             doc.setTextColor(148, 163, 184);
@@ -464,18 +493,24 @@
                 // Compute item summary
                 let itemSummaryArr = [];
                 let itemRows = [];
-                let paidToday = 0;
+                let paidTodayTotal = 0;
+                let tuitionPaidToday = 0;
                 
                 items.forEach(item => {
                     const desc = item.type === 'CUSTOM' ? (item.custom || 'Custom Payment') : item.type;
                     const amt = parseFloat(item.amount) || 0;
-                    paidToday += amt;
+                    paidTodayTotal += amt;
+                    
+                    if (item.type === 'Tuition Fees') {
+                        tuitionPaidToday += amt;
+                    }
+
                     itemSummaryArr.push(`${desc} (₹${amt})`);
                     itemRows.push({ desc: desc, amt: amt });
                 });
                 const itemsSummary = itemSummaryArr.join(', ');
 
-                const balanceDue = Math.max(0, totalAgreed - (paidPrev + paidToday));
+                const balanceDue = Math.max(0, totalAgreed - (paidPrev + tuitionPaidToday));
 
                 // 1. Save to Google Sheets
                 const sheetData = {
@@ -486,17 +521,18 @@
                     items: itemsSummary,
                     totalAgreedFees: totalAgreed,
                     paidPreviously: paidPrev,
-                    paidToday: paidToday,
+                    paidToday: paidTodayTotal,
                     balanceDue: balanceDue
                 };
                 await saveToGoogleSheets(sheetData);
 
                 // 2. Generate PDF
-                generateNativePDF(studentName, formattedReceipt, dateFormatted, studentPhone, itemRows, totalAgreed, paidPrev, paidToday, balanceDue);
+                generateNativePDF(studentName, formattedReceipt, dateFormatted, studentPhone, itemRows, totalAgreed, paidPrev, paidTodayTotal, balanceDue);
 
                 // 3. Launch WhatsApp Business
+                let duesMessage = totalAgreed > 0 ? `\n*Remaining Tuition Dues:* ₹${balanceDue.toLocaleString('en-IN')}` : '';
                 const waMessage = encodeURIComponent(
-                    `Hello ${studentName},\n\nThank you for your payment at *MATHEMATICS BY D.K. SINGH*.\n\n*Receipt No:* #${formattedReceipt}\n*Amount Paid Today:* ₹${paidToday.toLocaleString('en-IN')}\n*Remaining Dues:* ₹${balanceDue.toLocaleString('en-IN')}\n\nPlease find your fee receipt PDF attached above.`
+                    `Hello ${studentName},\n\nThank you for your payment at *MATHEMATICS BY D.K. SINGH*.\n\n*Receipt No:* #${formattedReceipt}\n*Amount Paid Today:* ₹${paidTodayTotal.toLocaleString('en-IN')}${duesMessage}\n\nPlease find your fee receipt PDF attached above.`
                 );
                 window.location.href = `whatsapp://send?phone=91${studentPhone}&text=${waMessage}`;
 
