@@ -38,7 +38,7 @@
                     </div>
                 </div>
 
-                <!-- Student & WhatsApp Phone Number -->
+                <!-- Student & Phone -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Student's Name</label>
                     <input type="text" id="studentName" placeholder="e.g. Rahul Kumar" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none" required oninput="updatePreview()">
@@ -52,9 +52,25 @@
                     </div>
                 </div>
 
-                <!-- Multiple Items Section -->
+                <!-- Dues & Fee Tracking Section -->
+                <div class="p-3 bg-blue-50/50 rounded-xl border border-blue-100 space-y-3">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-blue-900">Fee Agreement & Payment History</label>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Total Agreed Fees (₹)</label>
+                            <input type="number" id="totalAgreedFees" placeholder="e.g. 10000" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white" oninput="updatePreview()">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Paid Previously (₹)</label>
+                            <input type="number" id="paidPreviously" placeholder="e.g. 3000" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white" oninput="updatePreview()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Items Section -->
                 <div class="border-t pt-4">
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Payment Items</label>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Current Payment Items</label>
                     
                     <div id="itemsContainer" class="space-y-3">
                         <!-- Dynamic items load here -->
@@ -121,12 +137,24 @@
                     </tbody>
                 </table>
 
-                <!-- TOTAL SECTION -->
+                <!-- TOTAL & DUES BREAKDOWN SECTION -->
                 <div class="flex justify-end mb-8">
-                    <div class="w-1/2 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
-                        <div class="flex justify-between items-center text-sm font-bold text-blue-950">
-                            <span>Total Amount Paid:</span>
-                            <span class="text-lg text-blue-900">₹ <span id="prevTotal">0</span></span>
+                    <div class="w-full sm:w-2/3 bg-blue-50/40 p-4 rounded-xl border border-blue-100 space-y-1.5 text-xs">
+                        <div class="flex justify-between text-slate-600">
+                            <span>Total Agreed Fees:</span>
+                            <span class="font-semibold text-slate-800">₹ <span id="prevTotalAgreed">0</span></span>
+                        </div>
+                        <div class="flex justify-between text-slate-600">
+                            <span>Paid Previously:</span>
+                            <span class="font-semibold text-slate-800">₹ <span id="prevPaidPrev">0</span></span>
+                        </div>
+                        <div class="flex justify-between text-blue-900 font-bold border-t border-blue-200 pt-1.5 text-sm">
+                            <span>Amount Paid Today:</span>
+                            <span>₹ <span id="prevTotalToday">0</span></span>
+                        </div>
+                        <div class="flex justify-between text-red-600 font-bold border-t border-dashed border-red-200 pt-1.5 text-sm">
+                            <span>Remaining Balance Due:</span>
+                            <span>₹ <span id="prevBalanceDue">0</span></span>
                         </div>
                     </div>
                 </div>
@@ -150,14 +178,12 @@
     </div>
 
     <script>
-        // Google Web App Endpoint
         const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycby8A-gW1RwR7F0Qtqfe4X5Z6F52Te8F66niw_OLcpi0GsiyuBgXdaB0MuayCizmjT5a/exec";
 
         let items = [
             { type: 'Tuition Fees', custom: '', amount: '' }
         ];
 
-        // Initialize setup
         document.getElementById('dateInput').valueAsDate = new Date();
 
         function loadSavedSettings() {
@@ -236,6 +262,9 @@
             const receipt = document.getElementById('receiptNo').value || '1';
             const dateVal = document.getElementById('dateInput').value;
 
+            const totalAgreed = parseFloat(document.getElementById('totalAgreedFees').value) || 0;
+            const paidPrev = parseFloat(document.getElementById('paidPreviously').value) || 0;
+
             document.getElementById('prevStudent').innerText = student;
             document.getElementById('prevPhone').innerText = phone !== '--' ? '+91 ' + phone : '--';
             
@@ -247,15 +276,15 @@
                 document.getElementById('prevDate').innerText = `${day}/${month}/${year}`;
             }
 
-            // Render Preview Table
+            // Render Table & Calculate Total Today
             const tableBody = document.getElementById('prevTableBody');
             tableBody.innerHTML = '';
-            let total = 0;
+            let paidToday = 0;
 
             items.forEach((item, i) => {
                 const title = item.type === 'CUSTOM' ? (item.custom || 'Custom Payment') : item.type;
                 const amt = parseFloat(item.amount) || 0;
-                total += amt;
+                paidToday += amt;
 
                 const tr = document.createElement('tr');
                 tr.className = 'border-b border-slate-100';
@@ -267,7 +296,13 @@
                 tableBody.appendChild(tr);
             });
 
-            document.getElementById('prevTotal').innerText = total.toLocaleString('en-IN');
+            // Calculate Remaining Balance
+            const balanceDue = Math.max(0, totalAgreed - (paidPrev + paidToday));
+
+            document.getElementById('prevTotalAgreed').innerText = totalAgreed.toLocaleString('en-IN');
+            document.getElementById('prevPaidPrev').innerText = paidPrev.toLocaleString('en-IN');
+            document.getElementById('prevTotalToday').innerText = paidToday.toLocaleString('en-IN');
+            document.getElementById('prevBalanceDue').innerText = balanceDue.toLocaleString('en-IN');
         }
 
         async function saveToGoogleSheets(invoiceData) {
@@ -276,19 +311,20 @@
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(invoiceData)
+                    body: JSON.stringify(invoiceData),
+                    keepalive: true
                 });
             } catch (e) {
                 console.error("Sheets save error:", e);
             }
         }
 
-        function generateNativePDF(studentName, formattedReceipt, dateFormatted, studentPhone, itemRows, totalAmt) {
+        function generateNativePDF(studentName, formattedReceipt, dateFormatted, studentPhone, itemRows, totalAgreed, paidPrev, paidToday, balanceDue) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
 
             // Header Background & Title
-            doc.setTextColor(30, 58, 138); // Blue-900
+            doc.setTextColor(30, 58, 138);
             doc.setFont('Helvetica', 'bold');
             doc.setFontSize(20);
             doc.text("MATHEMATICS BY D.K. SINGH", 15, 20);
@@ -321,7 +357,6 @@
             doc.setTextColor(100, 116, 139);
             doc.text("STUDENT NAME:", 20, 50);
             doc.text("CONTACT NO:", 20, 58);
-            
             doc.text("RECEIPT NO:", 120, 50);
             doc.text("DATE:", 120, 58);
 
@@ -360,18 +395,32 @@
                 y += 10;
             });
 
-            // Total Amount Box
+            // Fee Summary Box
             y += 4;
             doc.setFillColor(239, 246, 255);
-            doc.roundedRect(110, y, 85, 12, 2, 2, 'F');
+            doc.roundedRect(110, y, 85, 28, 2, 2, 'F');
+
+            doc.setFontSize(8);
+            doc.setFont('Helvetica', 'normal');
+            doc.setTextColor(71, 85, 105);
+            
+            doc.text("Total Agreed Fees:", 115, y + 6);
+            doc.text("INR " + totalAgreed.toLocaleString('en-IN'), 190, y + 6, { align: 'right' });
+
+            doc.text("Paid Previously:", 115, y + 11);
+            doc.text("INR " + paidPrev.toLocaleString('en-IN'), 190, y + 11, { align: 'right' });
+
             doc.setFont('Helvetica', 'bold');
-            doc.setFontSize(10);
             doc.setTextColor(30, 58, 138);
-            doc.text("Total Amount Paid:", 115, y + 8);
-            doc.text("INR " + totalAmt.toLocaleString('en-IN'), 190, y + 8, { align: 'right' });
+            doc.text("Amount Paid Today:", 115, y + 17);
+            doc.text("INR " + paidToday.toLocaleString('en-IN'), 190, y + 17, { align: 'right' });
+
+            doc.setTextColor(220, 38, 38); // Red
+            doc.text("Remaining Balance Due:", 115, y + 23);
+            doc.text("INR " + balanceDue.toLocaleString('en-IN'), 190, y + 23, { align: 'right' });
 
             // Terms & Signature
-            y += 35;
+            y += 45;
             doc.setFontSize(8);
             doc.setFont('Helvetica', 'normal');
             doc.setTextColor(148, 163, 184);
@@ -387,101 +436,91 @@
             doc.setFont('Helvetica', 'normal');
             doc.text("Mathematics by D.K. Singh", 167.5, y + 9, { align: 'center' });
 
-            // Save PDF
             doc.save(`Invoice_${formattedReceipt}_${studentName.replace(/\s+/g, '_')}.pdf`);
         }
 
         async function handleInvoiceSubmit(event) {
-    event.preventDefault();
-    const btn = document.getElementById('downloadBtn');
-    btn.innerText = "Processing...";
-    btn.disabled = true;
+            event.preventDefault();
+            const btn = document.getElementById('downloadBtn');
+            btn.innerText = "Processing...";
+            btn.disabled = true;
 
-    try {
-        const studentName = document.getElementById('studentName').value || 'Student';
-        const studentPhone = document.getElementById('studentPhone').value;
-        const currentReceipt = parseInt(document.getElementById('receiptNo').value) || 1;
-        const dateVal = document.getElementById('dateInput').value;
-        const formattedReceipt = String(currentReceipt).padStart(3, '0');
+            try {
+                const studentName = document.getElementById('studentName').value || 'Student';
+                const studentPhone = document.getElementById('studentPhone').value;
+                const currentReceipt = parseInt(document.getElementById('receiptNo').value) || 1;
+                const dateVal = document.getElementById('dateInput').value;
+                const formattedReceipt = String(currentReceipt).padStart(3, '0');
 
-        let dateFormatted = '--';
-        if (dateVal) {
-            const [year, month, day] = dateVal.split('-');
-            dateFormatted = `${day}/${month}/${year}`;
+                const totalAgreed = parseFloat(document.getElementById('totalAgreedFees').value) || 0;
+                const paidPrev = parseFloat(document.getElementById('paidPreviously').value) || 0;
+
+                let dateFormatted = '--';
+                if (dateVal) {
+                    const [year, month, day] = dateVal.split('-');
+                    dateFormatted = `${day}/${month}/${year}`;
+                }
+
+                // Compute item summary
+                let itemSummaryArr = [];
+                let itemRows = [];
+                let paidToday = 0;
+                
+                items.forEach(item => {
+                    const desc = item.type === 'CUSTOM' ? (item.custom || 'Custom Payment') : item.type;
+                    const amt = parseFloat(item.amount) || 0;
+                    paidToday += amt;
+                    itemSummaryArr.push(`${desc} (₹${amt})`);
+                    itemRows.push({ desc: desc, amt: amt });
+                });
+                const itemsSummary = itemSummaryArr.join(', ');
+
+                const balanceDue = Math.max(0, totalAgreed - (paidPrev + paidToday));
+
+                // 1. Save to Google Sheets
+                const sheetData = {
+                    receiptNo: `#${formattedReceipt}`,
+                    date: dateVal,
+                    studentName: studentName,
+                    phone: `+91 ${studentPhone}`,
+                    items: itemsSummary,
+                    totalAgreedFees: totalAgreed,
+                    paidPreviously: paidPrev,
+                    paidToday: paidToday,
+                    balanceDue: balanceDue
+                };
+                await saveToGoogleSheets(sheetData);
+
+                // 2. Generate PDF
+                generateNativePDF(studentName, formattedReceipt, dateFormatted, studentPhone, itemRows, totalAgreed, paidPrev, paidToday, balanceDue);
+
+                // 3. Launch WhatsApp Business
+                const waMessage = encodeURIComponent(
+                    `Hello ${studentName},\n\nThank you for your payment at *MATHEMATICS BY D.K. SINGH*.\n\n*Receipt No:* #${formattedReceipt}\n*Amount Paid Today:* ₹${paidToday.toLocaleString('en-IN')}\n*Remaining Dues:* ₹${balanceDue.toLocaleString('en-IN')}\n\nPlease find your fee receipt PDF attached above.`
+                );
+                window.location.href = `whatsapp://send?phone=91${studentPhone}&text=${waMessage}`;
+
+                // 4. Update Receipt Counter & Reset Form
+                const nextReceipt = currentReceipt + 1;
+                localStorage.setItem('dksingh_receipt_no', nextReceipt);
+                document.getElementById('receiptNo').value = nextReceipt;
+                
+                document.getElementById('studentName').value = '';
+                document.getElementById('studentPhone').value = '';
+                document.getElementById('totalAgreedFees').value = '';
+                document.getElementById('paidPreviously').value = '';
+                items = [{ type: 'Tuition Fees', custom: '', amount: '' }];
+                renderFormItems();
+
+            } catch (err) {
+                alert("An error occurred while generating the invoice. Please try again.");
+                console.error(err);
+            } finally {
+                btn.innerText = "Download PDF & Send via WhatsApp";
+                btn.disabled = false;
+            }
         }
 
-        // Compute item summary
-        let itemSummaryArr = [];
-        let itemRows = [];
-        let totalAmt = 0;
-        
-        items.forEach(item => {
-            const desc = item.type === 'CUSTOM' ? (item.custom || 'Custom Payment') : item.type;
-            const amt = parseFloat(item.amount) || 0;
-            totalAmt += amt;
-            itemSummaryArr.push(`${desc} (₹${amt})`);
-            itemRows.push({ desc: desc, amt: amt });
-        });
-        const itemsSummary = itemSummaryArr.join(', ');
-
-        // 1. Save to Google Sheets
-        const sheetData = {
-            receiptNo: `#${formattedReceipt}`,
-            date: dateVal,
-            studentName: studentName,
-            phone: `+91 ${studentPhone}`,
-            items: itemsSummary,
-            totalAmount: totalAmt
-        };
-        saveToGoogleSheets(sheetData);
-
-        // 2. Generate PDF
-        generateNativePDF(studentName, formattedReceipt, dateFormatted, studentPhone, itemRows, totalAmt);
-
-        // Prepare pre-typed WhatsApp message
-        const waMessage = encodeURIComponent(
-            `Hello ${studentName},\n\nThank you for your payment at *MATHEMATICS BY D.K. SINGH*.\n\n*Receipt No:* #${formattedReceipt}\n*Amount Paid:* ₹${totalAmt.toLocaleString('en-IN')}\n*Payment For:* ${itemsSummary}\n\nPlease find your fee receipt PDF attached above.`
-        );
-
-        // Detect iOS / iPadOS
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-        if (isIOS) {
-            // iOS Flow: Open WhatsApp link explicitly so text never gets lost
-            const waUrl = `https://wa.me/91${studentPhone}?text=${waMessage}`;
-            
-            // Short delay to allow iPad to finish saving PDF to Files app
-            setTimeout(() => {
-                window.location.href = waUrl;
-            }, 800);
-        } else {
-            // Android Flow: Direct protocol launch
-            window.location.href = `whatsapp://send?phone=91${studentPhone}&text=${waMessage}`;
-        }
-
-        // 3. Update Receipt Counter & Reset Form
-        const nextReceipt = currentReceipt + 1;
-        localStorage.setItem('dksingh_receipt_no', nextReceipt);
-        document.getElementById('receiptNo').value = nextReceipt;
-        
-        document.getElementById('studentName').value = '';
-        document.getElementById('studentPhone').value = '';
-        items = [{ type: 'Tuition Fees', custom: '', amount: '' }];
-        renderFormItems();
-
-    } catch (err) {
-        alert("An error occurred while generating the invoice. Please try again.");
-        console.error(err);
-    } finally {
-        btn.innerText = "Download PDF & Send via WhatsApp";
-        btn.disabled = false;
-    }
-}
-
-
-
-        // Initialize settings and interface
         loadSavedSettings();
         renderFormItems();
     </script>
