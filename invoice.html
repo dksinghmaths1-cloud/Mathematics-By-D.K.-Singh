@@ -38,23 +38,27 @@
                     </div>
                 </div>
 
-                <!-- Student & Phone -->
+                <!-- Phone (Primary Search Key) -->
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-semibold text-slate-600">WhatsApp Phone Number</label>
+                        <span id="lookupStatus" class="text-[10px] font-semibold text-slate-400"></span>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="inline-flex items-center px-3 text-xs text-slate-500 bg-slate-100 border border-slate-300 rounded-lg">+91</span>
+                        <input type="tel" id="studentPhone" placeholder="10 digit mobile number" maxlength="10" pattern="[0-9]{10}" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none" required oninput="handlePhoneInput()">
+                    </div>
+                </div>
+
+                <!-- Student Name -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Student's Name</label>
                     <input type="text" id="studentName" placeholder="e.g. Rahul Kumar" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none" required oninput="updatePreview()">
                 </div>
 
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">WhatsApp Phone Number</label>
-                    <div class="flex gap-2">
-                        <span class="inline-flex items-center px-3 text-xs text-slate-500 bg-slate-100 border border-slate-300 rounded-lg">+91</span>
-                        <input type="tel" id="studentPhone" placeholder="10 digit mobile number" maxlength="10" pattern="[0-9]{10}" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none" required oninput="updatePreview()">
-                    </div>
-                </div>
-
                 <!-- Course Fee & Dues Tracking -->
                 <div class="p-3 bg-blue-50/50 rounded-xl border border-blue-100 space-y-3">
-                    <label class="block text-xs font-bold uppercase tracking-wider text-blue-900">Tuition Fee Agreement (Optional)</label>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-blue-900">Tuition Fee Agreement</label>
                     
                     <div class="grid grid-cols-2 gap-3">
                         <div>
@@ -63,7 +67,7 @@
                         </div>
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-600 mb-1">Paid Previously (₹)</label>
-                            <input type="number" id="paidPreviously" placeholder="e.g. 3000" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white" oninput="updatePreview()">
+                            <input type="number" id="paidPreviously" placeholder="Auto-calculated" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 bg-slate-100 text-slate-700 font-semibold" oninput="updatePreview()">
                         </div>
                     </div>
                 </div>
@@ -184,6 +188,8 @@
             { type: 'Tuition Fees', custom: '', amount: '' }
         ];
 
+        let lookupTimeout = null;
+
         document.getElementById('dateInput').valueAsDate = new Date();
 
         function loadSavedSettings() {
@@ -203,6 +209,53 @@
             if (newNo !== null && !isNaN(newNo) && newNo.trim() !== '') {
                 localStorage.setItem('dksingh_receipt_no', parseInt(newNo));
                 loadSavedSettings();
+            }
+        }
+
+        function handlePhoneInput() {
+            updatePreview();
+            const phoneInput = document.getElementById('studentPhone').value.trim();
+            const statusElem = document.getElementById('lookupStatus');
+
+            if (phoneInput.length === 10) {
+                statusElem.innerText = "Searching database...";
+                statusElem.className = "text-[10px] font-semibold text-blue-600 animate-pulse";
+
+                clearTimeout(lookupTimeout);
+                lookupTimeout = setTimeout(() => {
+                    fetchExistingStudentData(phoneInput);
+                }, 300);
+            } else {
+                statusElem.innerText = "";
+            }
+        }
+
+        async function fetchExistingStudentData(phone) {
+            const statusElem = document.getElementById('lookupStatus');
+            try {
+                const response = await fetch(`${GOOGLE_SHEET_URL}?phone=${phone}`);
+                const resData = await response.json();
+
+                if (resData.found) {
+                    if (resData.studentName) {
+                        document.getElementById('studentName').value = resData.studentName;
+                    }
+                    if (resData.totalAgreedFees > 0) {
+                        document.getElementById('totalAgreedFees').value = resData.totalAgreedFees;
+                    }
+                    document.getElementById('paidPreviously').value = resData.paidPreviously || 0;
+
+                    statusElem.innerText = "✓ Student found";
+                    statusElem.className = "text-[10px] font-semibold text-emerald-600";
+                } else {
+                    statusElem.innerText = "New student";
+                    statusElem.className = "text-[10px] font-semibold text-slate-400";
+                    document.getElementById('paidPreviously').value = 0;
+                }
+                updatePreview();
+            } catch (err) {
+                console.error("Lookup error:", err);
+                statusElem.innerText = "";
             }
         }
 
@@ -277,7 +330,6 @@
                 document.getElementById('prevDate').innerText = `${day}/${month}/${year}`;
             }
 
-            // Render Table & Calculate Separation
             const tableBody = document.getElementById('prevTableBody');
             tableBody.innerHTML = '';
             
@@ -288,8 +340,7 @@
                 const title = item.type === 'CUSTOM' ? (item.custom || 'Custom Payment') : item.type;
                 const amt = parseFloat(item.amount) || 0;
                 paidTodayTotal += amt;
-
-                // ONLY deduct from tuition balance if it's explicitly marked as Tuition Fees
+                
                 if (item.type === 'Tuition Fees') {
                     tuitionPaidToday += amt;
                 }
@@ -304,7 +355,6 @@
                 tableBody.appendChild(tr);
             });
 
-            // Calculate Remaining Balance for Tuition
             const balanceDue = Math.max(0, totalAgreed - (paidPrev + tuitionPaidToday));
 
             document.getElementById('prevTotalAgreed').innerText = totalAgreed.toLocaleString('en-IN');
@@ -312,7 +362,6 @@
             document.getElementById('prevTotalToday').innerText = paidTodayTotal.toLocaleString('en-IN');
             document.getElementById('prevBalanceDue').innerText = balanceDue.toLocaleString('en-IN');
 
-            // Hide/Show Dues Rows if totalAgreed is 0
             if (totalAgreed === 0) {
                 document.getElementById('agreedRow').style.display = 'none';
                 document.getElementById('prevPaidRow').style.display = 'none';
@@ -342,7 +391,6 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
 
-            // Header Background & Title
             doc.setTextColor(30, 58, 138);
             doc.setFont('Helvetica', 'bold');
             doc.setFontSize(20);
@@ -354,7 +402,6 @@
             doc.text("Excellence in Mathematics Coaching", 15, 26);
             doc.text("Contact: +91 9798929024", 15, 31);
 
-            // Receipt Tag
             doc.setFillColor(239, 246, 255);
             doc.roundedRect(150, 14, 45, 8, 2, 2, 'F');
             doc.setTextColor(30, 58, 138);
@@ -362,12 +409,10 @@
             doc.setFontSize(9);
             doc.text("RECEIPT", 172.5, 19.5, { align: 'center' });
 
-            // Divider Line
             doc.setDrawColor(30, 58, 138);
             doc.setLineWidth(0.8);
             doc.line(15, 36, 195, 36);
 
-            // Metadata Box
             doc.setFillColor(248, 250, 252);
             doc.roundedRect(15, 42, 180, 22, 2, 2, 'F');
 
@@ -386,7 +431,6 @@
             doc.text("#" + formattedReceipt, 145, 50);
             doc.text(dateFormatted, 145, 58);
 
-            // Table Headers
             let y = 74;
             doc.setFillColor(241, 245, 249);
             doc.rect(15, y, 180, 8, 'F');
@@ -398,7 +442,6 @@
             doc.text("DESCRIPTION", 35, y + 5.5);
             doc.text("AMOUNT (INR)", 185, y + 5.5, { align: 'right' });
 
-            // Table Rows
             y += 12;
             doc.setFont('Helvetica', 'normal');
             doc.setTextColor(15, 23, 42);
@@ -414,7 +457,6 @@
                 y += 10;
             });
 
-            // Fee Summary Box
             y += 4;
             if (totalAgreed > 0) {
                 doc.setFillColor(239, 246, 255);
@@ -448,7 +490,6 @@
                 doc.text("INR " + paidTodayTotal.toLocaleString('en-IN'), 190, y + 8, { align: 'right' });
             }
 
-            // Terms & Signature
             y += 40;
             doc.setFontSize(8);
             doc.setFont('Helvetica', 'normal');
@@ -490,7 +531,6 @@
                     dateFormatted = `${day}/${month}/${year}`;
                 }
 
-                // Compute item summary
                 let itemSummaryArr = [];
                 let itemRows = [];
                 let paidTodayTotal = 0;
@@ -545,6 +585,7 @@
                 document.getElementById('studentPhone').value = '';
                 document.getElementById('totalAgreedFees').value = '';
                 document.getElementById('paidPreviously').value = '';
+                document.getElementById('lookupStatus').innerText = '';
                 items = [{ type: 'Tuition Fees', custom: '', amount: '' }];
                 renderFormItems();
 
