@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mathematicians By D.K. Singh - Admission & Fee Form</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Native jsPDF library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 p-4 md:p-8">
+
+  <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    
+    <!-- LEFT: INPUT FORM -->
+    <div class="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <h2 class="text-xl font-bold text-slate-900 border-b pb-3 mb-4">Student Admission Entry</h2>
+
+      <form id="admissionForm" class="space-y-4" onsubmit="handleSubmit(event)">
+        
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="block text-xs font-semibold text-slate-600">Receipt No.</label>
+              <button type="button" onclick="resetReceiptCounter()" class="text-[10px] text-blue-600 hover:underline">Reset</button>
+            </div>
+            <input type="number" id="receiptNo" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none" required oninput="updatePreview()">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Admission Date</label>
+            <input type="date" id="dateInput" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none" required onchange="updatePreview()">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Student's Name</label>
+          <input type="text" id="studentName" placeholder="e.g. Rahul Kumar" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none" required oninput="updatePreview()">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">WhatsApp Phone Number</label>
+          <div class="flex gap-2">
+            <span class="inline-flex items-center px-3 text-xs text-slate-500 bg-slate-100 border border-slate-300 rounded-lg">+91</span>
+            <input type="tel" id="studentPhone" placeholder="10 digit mobile number" maxlength="10" pattern="[0-9]{10}" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none" required oninput="updatePreview()">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Class</label>
+          <input type="text" id="studentClass" placeholder="e.g. 11th / 12th / Dropper" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none" required oninput="updatePreview()">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Tuition Fee Amount (₹)</label>
+          <input type="number" id="tuitionFee" placeholder="e.g. 25000" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none" required oninput="updatePreview()">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Payment Due Date</label>
+          <input type="text" id="dueDate" placeholder="e.g. 15/08/2026 or Next Week" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none" required oninput="updatePreview()">
+        </div>
+
+        <div class="pt-4 border-t">
+          <button type="submit" id="submitBtn" class="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+            <span>Generate Fee PDF & Send WhatsApp</span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- RIGHT: LIVE PDF PREVIEW -->
+    <div class="lg:col-span-7 flex flex-col items-center">
+      <div id="previewCard" class="bg-white w-full max-w-[650px] p-8 rounded-2xl shadow-xl border border-slate-200">
+        
+        <!-- HEADER -->
+        <div class="border-b-2 border-blue-900 pb-4 mb-4 text-center">
+          <h1 class="text-2xl font-black text-blue-900">MATHEMATICIANS BY D.K. SINGH</h1>
+          <p class="text-xs font-bold text-slate-700 tracking-wide mt-1">JEE Mathematics Specialist</p>
+          <p class="text-xs text-slate-500">Contact: +91 97989290924</p>
+        </div>
+
+        <h3 class="text-center font-bold text-slate-800 uppercase tracking-wide text-xs mb-4">Fee Structure & Admission Receipt</h3>
+
+        <!-- DETAILS -->
+        <div class="grid grid-cols-2 gap-2 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs">
+          <div>
+            <p><span class="text-slate-500">Name:</span> <strong id="prevName" class="text-slate-900">--</strong></p>
+            <p><span class="text-slate-500">Phone:</span> <strong id="prevPhone" class="text-slate-800">--</strong></p>
+            <p><span class="text-slate-500">Class:</span> <strong id="prevClass" class="text-slate-800">--</strong></p>
+          </div>
+          <div class="text-right">
+            <p><span class="text-slate-500">Receipt No:</span> <strong id="prevReceipt" class="text-blue-900">#--</strong></p>
+            <p><span class="text-slate-500">Date:</span> <strong id="prevDate" class="text-slate-800">--</strong></p>
+          </div>
+        </div>
+
+        <!-- BREAKDOWN TABLE -->
+        <table class="w-full text-xs mb-4 border-collapse">
+          <thead>
+            <tr class="bg-slate-100 text-slate-700 uppercase font-semibold border-b">
+              <th class="py-2 px-3 text-left">Fee Component</th>
+              <th class="py-2 px-3 text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr>
+              <td class="py-2 px-3 text-slate-800">Registration Fee (Fixed)</td>
+              <td class="py-2 px-3 text-right font-medium">₹ 500</td>
+            </tr>
+            <tr>
+              <td class="py-2 px-3 text-slate-800">Tech & Infrastructure Fee (Fixed)</td>
+              <td class="py-2 px-3 text-right font-medium">₹ 4,000</td>
+            </tr>
+            <tr>
+              <td class="py-2 px-3 text-slate-800">Tuition Fee</td>
+              <td class="py-2 px-3 text-right font-medium">₹ <span id="prevTuition">0</span></td>
+            </tr>
+            <tr class="bg-blue-50 font-bold text-blue-950">
+              <td class="py-2 px-3">Total Fee Payable</td>
+              <td class="py-2 px-3 text-right">₹ <span id="prevTotal">4,500</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- DUE DATE -->
+        <div class="bg-amber-50 border border-amber-200 p-2.5 rounded-lg text-xs font-semibold text-amber-900 mb-4">
+          Payment Due Date: <span id="prevDueDate">--</span>
+        </div>
+
+        <!-- TERMS & CONDITIONS -->
+        <div class="border-t border-slate-200 pt-3 text-[10px] text-slate-600 leading-relaxed">
+          <p class="font-bold text-slate-800 mb-1">Terms & Conditions:</p>
+          <ol class="list-decimal pl-4 space-y-0.5">
+            <li>Fees once paid are non-refundable.</li>
+            <li>Only case of refund is in first 7 days of admission, entire tuition fees paid will be refunded. <i>[Note: Registration Fee and Tech and Infrastructure fee once paid is non refundable in any circumstances]</i></li>
+            <li>No refund request entertained after 7 days.</li>
+            <li>First 4500 rupees paid will be registration + tech and infrastructure fee, tuition fee will be counted from after first 4500 rupee payment.</li>
+          </ol>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Configured with your Web App Endpoint URL
+    const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycby9IPIzfM9ZKK9FOL21S5EabGOmtlOtK5hqYQ2jFyJ3BjbEFIlsSAm77ImQtgqYgsQxnA/exec";
+
+    // Auto set today's date and receipt counter
+    document.getElementById('dateInput').valueAsDate = new Date();
+    document.getElementById('receiptNo').value = localStorage.getItem('dksingh_receipt') || 101;
+
+    function resetReceiptCounter() {
+      const newNo = prompt("Enter starting receipt number:", "101");
+      if (newNo !== null && !isNaN(newNo) && newNo.trim() !== '') {
+        localStorage.setItem('dksingh_receipt', parseInt(newNo));
+        document.getElementById('receiptNo').value = parseInt(newNo);
+        updatePreview();
+      }
+    }
+
+    function updatePreview() {
+      const name = document.getElementById('studentName').value || '--';
+      const phone = document.getElementById('studentPhone').value || '--';
+      const studentClass = document.getElementById('studentClass').value || '--';
+      const receipt = document.getElementById('receiptNo').value || '101';
+      const dateVal = document.getElementById('dateInput').value;
+      const tuition = parseFloat(document.getElementById('tuitionFee').value) || 0;
+      const dueDate = document.getElementById('dueDate').value || '--';
+
+      document.getElementById('prevName').innerText = name;
+      document.getElementById('prevPhone').innerText = phone !== '--' ? '+91 ' + phone : '--';
+      document.getElementById('prevClass').innerText = studentClass;
+      document.getElementById('prevReceipt').innerText = '#' + receipt;
+      document.getElementById('prevTuition').innerText = tuition.toLocaleString('en-IN');
+      document.getElementById('prevTotal').innerText = (4500 + tuition).toLocaleString('en-IN');
+      document.getElementById('prevDueDate').innerText = dueDate;
+
+      if (dateVal) {
+        const [y, m, d] = dateVal.split('-');
+        document.getElementById('prevDate').innerText = `${d}/${m}/${y}`;
+      }
+    }
+
+    async function handleSubmit(event) {
+      event.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.innerText = "Processing & Downloading PDF...";
+
+      const studentName = document.getElementById('studentName').value;
+      const studentPhone = document.getElementById('studentPhone').value;
+      const studentClass = document.getElementById('studentClass').value;
+      const receiptNo = document.getElementById('receiptNo').value;
+      const dateVal = document.getElementById('dateInput').value;
+      const tuitionFee = parseFloat(document.getElementById('tuitionFee').value) || 0;
+      const dueDate = document.getElementById('dueDate').value;
+      const totalFee = 4500 + tuitionFee;
+
+      let dateFormatted = dateVal;
+      if (dateVal) {
+        const [y, m, d] = dateVal.split('-');
+        dateFormatted = `${d}/${m}/${y}`;
+      }
+
+      // 1. Send data to Google Sheets
+      try {
+        await fetch(GOOGLE_SHEET_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            receiptNo: '#' + receiptNo,
+            date: dateFormatted,
+            studentName: studentName,
+            phone: studentPhone,
+            studentClass: studentClass,
+            tuitionFee: tuitionFee,
+            dueDate: dueDate
+          })
+        });
+      } catch (err) {
+        console.error("Sheet Sync Error: ", err);
+      }
+
+      // 2. Generate and Download Client-Side PDF (Small file size in KB)
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+
+      // Header
+      doc.setTextColor(0, 51, 102);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text("MATHEMATICIANS BY D.K. SINGH", 105, 18, { align: 'center' });
+
+      doc.setFontSize(9);
+      doc.setFont('Helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.text("JEE Mathematics Specialist  |  Phone: +91 97989290924", 105, 24, { align: 'center' });
+
+      doc.setDrawColor(0, 51, 102);
+      doc.setLineWidth(0.6);
+      doc.line(15, 28, 195, 28);
+
+      // Student Info
+      doc.setFontSize(9);
+      doc.setTextColor(30, 30, 30);
+      doc.text(`Receipt No: #${receiptNo}`, 15, 36);
+      doc.text(`Date: ${dateFormatted}`, 140, 36);
+      doc.text(`Student Name: ${studentName}`, 15, 42);
+      doc.text(`Class: ${studentClass}`, 140, 42);
+      doc.text(`Phone: +91 ${studentPhone}`, 15, 48);
+
+      // Fee Table
+      let y = 56;
+      doc.setFillColor(240, 244, 248);
+      doc.rect(15, y, 180, 7, 'F');
+      doc.setFont('Helvetica', 'bold');
+      doc.text("Fee Component", 20, y + 5);
+      doc.text("Amount (INR)", 185, y + 5, { align: 'right' });
+
+      y += 12;
+      doc.setFont('Helvetica', 'normal');
+      doc.text("Registration Fee (Fixed)", 20, y);
+      doc.text("INR 500", 185, y, { align: 'right' });
+
+      y += 8;
+      doc.text("Tech & Infrastructure Fee (Fixed)", 20, y);
+      doc.text("INR 4,000", 185, y, { align: 'right' });
+
+      y += 8;
+      doc.text("Tuition Fee", 20, y);
+      doc.text("INR " + tuitionFee.toLocaleString('en-IN'), 185, y, { align: 'right' });
+
+      y += 6;
+      doc.setFillColor(230, 240, 255);
+      doc.rect(15, y, 180, 8, 'F');
+      doc.setFont('Helvetica', 'bold');
+      doc.text("Total Fee Payable", 20, y + 5.5);
+      doc.text("INR " + totalFee.toLocaleString('en-IN'), 185, y + 5.5, { align: 'right' });
+
+      // Due Date Box
+      y += 16;
+      doc.setFillColor(255, 248, 230);
+      doc.rect(15, y, 180, 8, 'F');
+      doc.setFont('Helvetica', 'bold');
+      doc.setTextColor(150, 80, 0);
+      doc.text(`Payment Due Date: ${dueDate}`, 20, y + 5.5);
+
+      // Terms & Conditions
+      y += 18;
+      doc.setFontSize(8);
+      doc.setFont('Helvetica', 'bold');
+      doc.setTextColor(0, 51, 102);
+      doc.text("Terms and Conditions:", 15, y);
+
+      doc.setFont('Helvetica', 'normal');
+      doc.setTextColor(60, 60, 60);
+      y += 5;
+      doc.text("1. Fees once paid are non-refundable.", 15, y);
+      y += 5;
+      doc.text("2. Only case of refund is in first 7 days of admission, entire tuition fees paid will be refunded.", 15, y);
+      y += 4;
+      doc.setFont('Helvetica', 'oblique');
+      doc.text("    [Note: Registration Fee and Tech and Infrastructure fee once paid is non refundable in any circumstances]", 15, y);
+      doc.setFont('Helvetica', 'normal');
+      y += 5;
+      doc.text("3. No refund request entertained after 7 days.", 15, y);
+      y += 5;
+      doc.text("4. First 4500 rupees paid will be registration + tech and infrastructure fee, tuition fee will be counted from", 15, y);
+      y += 4;
+      doc.text("    after first 4500 rupee payment.", 15, y);
+
+      // Download PDF File Directly
+      doc.save(`Fee_Brochure_${studentName.replace(/\s+/g, '_')}.pdf`);
+
+      // 3. Trigger WhatsApp Link
+      const waMsg = encodeURIComponent(
+        `Hello ${studentName},\n\nWelcome to *Mathematicians By D.K. Singh*!\n\nHere are your admission details:\n• Class: ${studentClass}\n• Total Fee: ₹${totalFee.toLocaleString('en-IN')}\n• Payment Due Date: ${dueDate}\n\nYour Fee Brochure PDF has been generated and downloaded. Please find it attached.`
+      );
+
+      // Increment receipt counter for next admission
+      const nextReceipt = parseInt(receiptNo) + 1;
+      localStorage.setItem('dksingh_receipt', nextReceipt);
+      document.getElementById('receiptNo').value = nextReceipt;
+
+      // Launch WhatsApp chat
+      window.location.href = `https://wa.me/91${studentPhone}?text=${waMsg}`;
+
+      btn.disabled = false;
+      btn.innerText = "Generate Fee PDF & Send WhatsApp";
+    }
+
+    updatePreview();
+  </script>
+</body>
+</html>
